@@ -78,3 +78,72 @@ input.numbers {
     min-width: 20px;
     text-align: center;
 }
+
+.tooltip {
+    position: relative;
+    display: inline-block;
+    border-bottom: 1px dotted #fff;
+    cursor: help;
+}
+
+.tooltip .tooltiptext-bottom {
+    cursor: default;
+    visibility: hidden;
+    background-color: black;
+    color: #fff;
+    text-align: center;
+    padding: 5px 0;
+    border-radius: 6px;
+    width: 120px;
+    left: 50%;
+    margin-left: -60px;
+    position: absolute;
+    z-index: 100;
+    top: 100%;
+    pointer-events: none;
+}
+
+/* Show the tooltip text when you mouse over the tooltip container */
+.tooltip:hover .tooltiptext-bottom {
+    visibility: visible;
+}
+
+.tooltip .tooltiptext-top {
+    cursor: default;
+    visibility: hidden;
+    background-color: black;
+    color: #fff;
+    text-align: center;
+    padding: 5px 0;
+    border-radius: 6px;
+    width: 120px;
+    left: 50%;
+    margin-left: -60px;
+    position: absolute;
+    z-index: 100;
+    top: -150%;
+    pointer-events: none;
+}
+
+/* Show the tooltip text when you mouse over the tooltip container */
+.tooltip:hover .tooltiptext-top {
+    visibility: visible;
+}
+
+.no-select {
+    user-select: none;
+}
+
+#input-type {
+    position: absolute;
+    width: 52px;
+    left: 115px;
+    margin-top: 5px;
+}
+
+#p-t {
+    position: absolute;
+    width: 36px;
+    left: 110px;
+    margin-top: 5px;
+}

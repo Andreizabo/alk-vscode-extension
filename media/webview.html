@@ -11,18 +11,33 @@
     <script src="webview.js"></script> -->
 </head>
 <body>
-    <input class="checkboxes" type="checkbox" id="e" name="exhaustive" onclick='handleCheckbox(this);'>
-    <label for="e">Exhaustive</label>
+    <span class="no-select">
+        <input class="checkboxes" type="checkbox" id="e" name="exhaustive" onclick='handleCheckbox(this);'>
+        <label for="e">Exhaustive</label>
+        <sup><div class="tooltip">?<span class="tooltiptext-bottom">trigger exhaustive mode</span></div></sup>
+    </span>
+
     <br>
-    <input class="checkboxes" type="checkbox" id="m" name="metadata" onclick='handleCheckbox(this);'>
-    <label for="m">Metadata</label>
+    <span class="no-select">
+        <input class="checkboxes" type="checkbox" id="m" name="metadata" onclick='handleCheckbox(this);'>
+        <label for="m">Metadata</label>
+        <sup><div class="tooltip">?<span class="tooltiptext-bottom">display metadata (final configuration)</span></div></sup>
+    </span>
+
     <br>
-    <input class="checkboxes" type="checkbox" id="p" name="precision" onclick='handleCheckboxNumber("p", "p-t", true);'>
-    <label for="p">Precision</label>
+    <span class="no-select">
+        <input class="checkboxes" type="checkbox" id="p" name="precision" onclick='handleCheckboxNumber("p", "p-t", true);'>
+        <label for="p">Precision</label>
+        <sup><div class="tooltip">?<span class="tooltiptext-top">set the precision; <arg> represents the number of decimals</span></div></sup>
+    </span>
     <input class="numbers" type="number" id="p-t" name="precision" min="1" max="10" onchange='handleCheckboxNumber("p", "p-t", false);'>
+
     <br>
-    <input class="checkboxes" type="checkbox" id="i" name="input" onclick='handleCheckbox(this);'>
-    <label for="i">Input</label>
+    <span class="no-select">
+        <input class="checkboxes" type="checkbox" id="i" name="input" onclick='handleCheckbox(this);'>
+        <label for="i">Input</label>
+        <sup><div class="tooltip">?<span class="tooltiptext-top">set initial configuration to <arg> (string or file)</span></div></sup>
+    </span>
     <select name="input-type" id="input-type" onchange="updateInputType(this);">
         <option value="text">Text</option>
         <option value="file">File</option>
