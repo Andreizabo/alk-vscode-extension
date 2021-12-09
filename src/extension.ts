@@ -105,6 +105,17 @@ export function activate(context: vscode.ExtensionContext)
 	const alkOutput = vscode.window.createOutputChannel("Alk Output");
 
 	let disposable = vscode.commands.registerCommand('alk.run', () => {
+		if(errorExists) {
+			// vscode.window.activeTextEditor?.setDecorations(errorDecoration, []);
+			for (let key in errorDecorations) {
+				let value = errorDecorations[key];
+				value['decoration'].dispose();
+				value['errorMessages'] = [];
+				delete errorDecorations[key];
+			}
+			console.log("Cleared");
+			errorExists = false;
+		}
 		const editor = vscode.window.activeTextEditor;
 		//var terminal = vscode.window.activeTerminal;
 		if (!editor) 
