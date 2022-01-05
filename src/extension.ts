@@ -147,6 +147,13 @@ function checkJavaInstalled(alkOutput: vscode.OutputChannel)
 	return ok1 || ok2;
 }
 
+function replacePath(path: string) {
+    let separator = os.type() === 'Windows_NT' ? '\r\n' : '\n';
+    let parts = path.split(separator).filter(p => p !== '');
+    parts.shift()
+    return parts.join(separator);
+}
+
 export function activate(context: vscode.ExtensionContext) 
 {
 	console.log('Extension active');
@@ -197,9 +204,9 @@ export function activate(context: vscode.ExtensionContext)
 		//terminal.show();
 		//terminal.sendText(`${alkPath} -a ${path} ${options}`);
 		const cp = require('child_process');
-		const command = (os.type() === 'Windows_NT' ? '' : '/bin/bash ') + `${alkPath} -a "${filePath}" ${options}`;
+		const command = (os.type() === 'Windows_NT' ? '' : '/bin/bash ') + `"${alkPath}" -a "${filePath}" ${options}`;
 		cp.exec(command, (err: any, stdout: any, stderr: any) => {
-			alkOutput.appendLine(stdout);
+			alkOutput.appendLine(replacePath(stdout));
 			alkOutput.appendLine(stderr);
 			if (stdout || stderr) { 
 				handleErrors(stdout, stderr);
