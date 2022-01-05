@@ -1,5 +1,8 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
+import * as os from 'os';
 import { AlkViewProvider } from './alkViewProvider';
+import { cpuUsage } from 'process';
 
 let errorExists = false;
 
@@ -98,13 +101,66 @@ function handleErrors(stdout: String, stderr: String) {
 	}
 }
 
+function displayJavaHelp(alkOutput: vscode.OutputChannel)
+{
+	alkOutput.appendLine('Java is not installed. Please install Java and restart VS Code.');
+	if (os.type() === 'Windows_NT')
+	{
+		alkOutput.appendLine('You can download Java from https://www.java.com/en/download/');
+		alkOutput.appendLine('After installing Java, you have to add it to the Path environment variable.');
+		alkOutput.appendLine('You can do it by searching for "Environment Variables" in the Start menu, then click Environment Variables in the window that opened.');
+		alkOutput.appendLine('In the System variables tab, search for the Path variable, click it, and then click on Edit.');
+		alkOutput.appendLine('Click on New, then add the path where you installed Java (the default one is C:\\Program Files\\Java\\<version>\\bin), then click OK.');
+	}
+	else if (os.type() === "Linux")
+	{
+		alkOutput.appendLine('You can install Java from the command line by running the following command:');
+		alkOutput.appendLine('sudo apt-get install default-jre');
+	}
+	else
+	{
+		alkOutput.appendLine('You can download Java from https://www.java.com/en/download/');
+	}
+	alkOutput.show(true);
+}
+
+function checkJavaInstalled(alkOutput: vscode.OutputChannel)
+{
+	const cp = require('child_process');
+	let ok1 = true, ok2 = true;
+	try
+	{
+		cp.execSync('java --version');
+	}
+	catch(e)
+	{
+		ok1 = false;
+	}
+	try
+	{
+		cp.execSync('java -version');
+	}
+	catch(e)
+	{
+		ok2 = false;
+	}
+	return ok1 || ok2;
+}
+
 export function activate(context: vscode.ExtensionContext) 
 {
 	console.log('Extension active');
 	const alkProvider = new AlkViewProvider(context.extensionUri);
 	const alkOutput = vscode.window.createOutputChannel("Alk Output");
+	const javaInstalled = checkJavaInstalled(alkOutput);
 
 	let disposable = vscode.commands.registerCommand('alk.run', () => {
+		if (!javaInstalled)
+		{
+			displayJavaHelp(alkOutput);
+			return;
+		}
+
 		if(errorExists) {
 			// vscode.window.activeTextEditor?.setDecorations(errorDecoration, []);
 			for (let key in errorDecorations) {
@@ -123,7 +179,9 @@ export function activate(context: vscode.ExtensionContext)
 			vscode.window.showErrorMessage('No active editor');
 			return;
 		}
-		const alkPath = vscode.workspace.getConfiguration('alk').get('path');
+		
+		const alkRunScript = os.type() === 'Windows_NT' ? 'alki.bat' : 'alki.sh';
+		const alkPath = path.join(context.extensionUri.fsPath, 'media', 'alk', 'v3.0', 'bin', alkRunScript);
 		if (!alkPath)
 		{
 			vscode.window.showErrorMessage('No alk path configured');
@@ -135,11 +193,12 @@ export function activate(context: vscode.ExtensionContext)
 		// }
 		const options = alkProvider.getOptionsString();
 		
-		const path = editor.document.uri.fsPath;
+		const filePath = editor.document.uri.fsPath;
 		//terminal.show();
 		//terminal.sendText(`${alkPath} -a ${path} ${options}`);
 		const cp = require('child_process');
-		cp.exec(`${alkPath} -a ${path} ${options}`, (err: any, stdout: any, stderr: any) => {
+		const command = (os.type() === 'Windows_NT' ? '' : '/bin/bash ') + `${alkPath} -a "${filePath}" ${options}`;
+		cp.exec(command, (err: any, stdout: any, stderr: any) => {
 			alkOutput.appendLine(stdout);
 			alkOutput.appendLine(stderr);
 			if (stdout || stderr) { 
