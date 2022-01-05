@@ -206,7 +206,7 @@ export function activate(context: vscode.ExtensionContext)
 		const cp = require('child_process');
 		const command = (os.type() === 'Windows_NT' ? '' : '/bin/bash ') + `"${alkPath}" -a "${filePath}" ${options}`;
 		cp.exec(command, (err: any, stdout: any, stderr: any) => {
-			alkOutput.appendLine(replacePath(stdout));
+			alkOutput.appendLine(os.type() === 'Windows_NT' ? replacePath(stdout) : stdout);
 			alkOutput.appendLine(stderr);
 			if (stdout || stderr) { 
 				handleErrors(stdout, stderr);
