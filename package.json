@@ -21,17 +21,20 @@
             {
                 "command": "alk.run",
                 "title": "Run Alk",
-                "category": "Alk"
+                "category": "Alk",
+                "icon": "$(play)"
             },
             {
                 "command": "alk.runExhaustive",
                 "title": "Run Alk Exhaustive",
-                "category": "Alk"
+                "category": "Alk",
+                "icon": "$(debug-alt)"
             },
             {
                 "command": "alk.stop",
                 "title": "Stop Alk",
-                "category": "Alk"
+                "category": "Alk",
+                "icon": "$(stop)"
             }
         ],
         "configuration": {
@@ -123,10 +126,20 @@
                     "group": "z_commands"
                 }
             ],
-            "editor/title": [
+            "editor/title/run": [
                 {
-                    "when": "resourceLangId == alk",
-                    "submenu": "alk.menu",
+                    "when": "resourceLangId == alk && alk.canRun",
+                    "command": "alk.run",
+                    "group": "z_commands"
+                },
+                {
+                    "when": "resourceLangId == alk && alk.canRun",
+                    "command": "alk.runExhaustive",
+                    "group": "z_commands"
+                },
+                {
+                    "when": "resourceLangId == alk && !alk.canRun",
+                    "command": "alk.stop",
                     "group": "z_commands"
                 }
             ]
