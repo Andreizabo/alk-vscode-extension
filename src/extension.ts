@@ -211,17 +211,21 @@ function runAlkFile(context: vscode.ExtensionContext, alkProvider: AlkViewProvid
 	{
 		alkOutput.appendLine(`Running ${filePath}`);
 	}
-	currentRunningProcess = cp.exec(command, (err: any, stdout: any, stderr: any) => {
+	
+	vscode.commands.executeCommand('setContext', 'alk.canRun', false);
+	currentRunningProcess = cp.exec(command, {detached: true}, (err: any, stdout: any, stderr: any) => {
 		currentRunningProcess = null;
+		vscode.commands.executeCommand('setContext', 'alk.canRun', true);
+		if (err) {
+			console.log(`err: ${err}`);
+			return;
+		}
 		alkOutput.appendLine(os.type() === 'Windows_NT' ? replacePath(stdout) : stdout);
 		alkOutput.appendLine(stderr);
 		if (stdout || stderr) { 
 			handleErrors(stdout, stderr);
 		}
 		alkOutput.show(true);
-		if (err) {
-			console.log(`err: ${err}`);
-		}
 
 		vscode.workspace.onDidChangeTextDocument(_change => {
 			if (_change.document === editor.document) 
@@ -247,6 +251,7 @@ function runAlkFile(context: vscode.ExtensionContext, alkProvider: AlkViewProvid
 export function activate(context: vscode.ExtensionContext) 
 {
 	console.log('Extension active');
+	vscode.commands.executeCommand('setContext', 'alk.canRun', true);
 	const alkProvider = new AlkViewProvider(context.extensionUri);
 	const alkOutput = vscode.window.createOutputChannel("Alk Output");
 	const javaInstalled = checkJavaInstalled(alkOutput);
@@ -262,7 +267,18 @@ export function activate(context: vscode.ExtensionContext)
 	let stopDisposable = vscode.commands.registerCommand('alk.stop', () => {
 		if (currentRunningProcess)
 		{
-			currentRunningProcess.kill();
+			const kill = require('tree-kill');
+			alkOutput.appendLine('Stopping Alk');
+			kill(currentRunningProcess.pid, (err: any) => {
+				if (err)
+				{
+					alkOutput.appendLine(`Error while stopping alk. ${err}`);
+				}
+				else
+				{
+					alkOutput.appendLine('Alk stopped');
+				}
+			});
 		}
 	});
 
