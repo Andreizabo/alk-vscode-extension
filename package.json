@@ -27,6 +27,11 @@
                 "command": "alk.runExhaustive",
                 "title": "Run Alk Exhaustive",
                 "category": "Alk"
+            },
+            {
+                "command": "alk.stop",
+                "title": "Stop Alk",
+                "category": "Alk"
             }
         ],
         "configuration": {
@@ -94,6 +99,11 @@
                 {
                     "when": "resourceLangId == alk",
                     "command": "alk.runExhaustive",
+                    "group": "z_commands"
+                },
+                {
+                    "when": "resourceLangId == alk",
+                    "command": "alk.stop",
                     "group": "z_commands"
                 }
             ]

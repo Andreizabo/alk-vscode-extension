@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { AlkViewProvider } from './alkViewProvider';
 import { cpuUsage } from 'process';
+import { ChildProcess } from 'child_process';
 
 let errorExists = false;
 
@@ -150,9 +151,11 @@ function checkJavaInstalled(alkOutput: vscode.OutputChannel)
 function replacePath(path: string) {
     let separator = os.type() === 'Windows_NT' ? '\r\n' : '\n';
     let parts = path.split(separator).filter(p => p !== '');
-    parts.shift()
+    parts.shift();
     return parts.join(separator);
 }
+
+let currentRunningProcess: ChildProcess | null = null;
 
 function runAlkFile(context: vscode.ExtensionContext, alkProvider: AlkViewProvider, alkOutput: vscode.OutputChannel,javaInstalled: boolean, exhaustive = false)
 {
@@ -208,8 +211,8 @@ function runAlkFile(context: vscode.ExtensionContext, alkProvider: AlkViewProvid
 	{
 		alkOutput.appendLine(`Running ${filePath}`);
 	}
-	cp.exec(command, (err: any, stdout: any, stderr: any) => {
-		
+	currentRunningProcess = cp.exec(command, (err: any, stdout: any, stderr: any) => {
+		currentRunningProcess = null;
 		alkOutput.appendLine(os.type() === 'Windows_NT' ? replacePath(stdout) : stdout);
 		alkOutput.appendLine(stderr);
 		if (stdout || stderr) { 
@@ -238,6 +241,7 @@ function runAlkFile(context: vscode.ExtensionContext, alkProvider: AlkViewProvid
 			}
 		});
 	});
+
 }
 
 export function activate(context: vscode.ExtensionContext) 
@@ -255,8 +259,16 @@ export function activate(context: vscode.ExtensionContext)
 		runAlkFile(context, alkProvider, alkOutput, javaInstalled, true);
 	});
 
+	let stopDisposable = vscode.commands.registerCommand('alk.stop', () => {
+		if (currentRunningProcess)
+		{
+			currentRunningProcess.kill();
+		}
+	});
+
 	context.subscriptions.push(disposable);
 	context.subscriptions.push(exhaustiveDisposable);
+	context.subscriptions.push(stopDisposable);
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider(AlkViewProvider.viewType, alkProvider)
 	);
