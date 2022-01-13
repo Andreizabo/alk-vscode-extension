@@ -38,7 +38,10 @@
             "title": "Alk",
             "properties": {
                 "alk.precision": {
-                    "type": ["number", "null"],
+                    "type": [
+                        "number",
+                        "null"
+                    ],
                     "description": "The precision to be used when running an algorithm.",
                     "default": null
                 },
@@ -91,8 +94,8 @@
         ],
         "submenus": [
             {
-              "id": "alk.menu",
-              "label": "Alk"
+                "id": "alk.menu",
+                "label": "Alk"
             }
         ],
         "menus": {
@@ -138,16 +141,21 @@
         "test": "node ./out/test/runTest.js"
     },
     "devDependencies": {
-        "@types/vscode": "^1.62.0",
         "@types/glob": "^7.1.4",
         "@types/mocha": "^9.0.0",
         "@types/node": "14.x",
+        "@types/vscode": "^1.62.0",
         "@typescript-eslint/eslint-plugin": "^4.31.1",
         "@typescript-eslint/parser": "^4.31.1",
+        "@vscode/test-electron": "^1.6.2",
         "eslint": "^7.32.0",
         "glob": "^7.1.7",
         "mocha": "^9.1.1",
-        "typescript": "^4.4.3",
-        "@vscode/test-electron": "^1.6.2"
+        "typescript": "^4.4.3"
+    },
+    "dependencies": {
+        "axios": "^0.24.0",
+        "download": "^8.0.0",
+        "unzipper": "^0.10.11"
     }
 }
