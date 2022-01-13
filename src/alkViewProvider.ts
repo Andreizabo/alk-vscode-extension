@@ -27,6 +27,14 @@ export class AlkViewProvider implements vscode.WebviewViewProvider
     public getOptionsString()
     {
         let options = '';
+        if (vscode.workspace.getConfiguration('alk').get('metadata'))
+        {
+            options += '-m ';
+        }
+        if (vscode.workspace.getConfiguration('alk').get('precision'))
+        {
+            options += `-p ${vscode.workspace.getConfiguration('alk').get('precision')} `;
+        }
         for (const key in this._options)
         {
             if (this._options[key])
@@ -90,20 +98,20 @@ export class AlkViewProvider implements vscode.WebviewViewProvider
             console.log(message);
             switch (message.command) {
                 case 'metadata':
-                    this._options["m"] = message.value;
+                    // this._options["m"] = message.value;
                     break;
                 case 'exhaustive':
-                    this._options["e"] = message.value;
+                    // this._options["e"] = message.value;
                     break;
                 case "precision":
-                    if (message.value !== -1)
-                    {
-                        this._options["p"] = message.value;
-                    }
-                    else
-                    {
-                        delete this._options["p"];
-                    }
+                    // if (message.value !== -1)
+                    // {
+                    //     this._options["p"] = message.value;
+                    // }
+                    // else
+                    // {
+                    //     delete this._options["p"];
+                    // }
                     break;
                 case "input":
                     if (message.value !== "")

@@ -12,7 +12,8 @@
     "Snippets"
   ],
   "activationEvents": [
-    "workspaceContains:/**/*.alk"
+    "workspaceContains:/**/*.alk",
+    "onLanguage:alk"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -23,6 +24,29 @@
         "category": "Alk"
       }
     ],
+    "configuration": {
+      "title": "Alk",
+      "properties": {
+        "alk.precision": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "The precision to be used when running an algorithm.",
+          "default": null
+        },
+        "alk.metadata": {
+          "type": "boolean",
+          "description": "Whether to show metadata (the final configuration) in the output.",
+          "default": true
+        },
+        "alk.showCommand": {
+          "type": "boolean",
+          "description": "Whether to show the command used to run the algorithm in the output.",
+          "default": true
+        }
+      }
+    },
     "views": {
       "explorer": [
         {
@@ -68,16 +92,16 @@
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
-    "@types/vscode": "^1.62.0",
     "@types/glob": "^7.1.4",
     "@types/mocha": "^9.0.0",
     "@types/node": "14.x",
+    "@types/vscode": "^1.62.0",
     "@typescript-eslint/eslint-plugin": "^4.31.1",
     "@typescript-eslint/parser": "^4.31.1",
+    "@vscode/test-electron": "^1.6.2",
     "eslint": "^7.32.0",
     "glob": "^7.1.7",
     "mocha": "^9.1.1",
-    "typescript": "^4.4.3",
-    "@vscode/test-electron": "^1.6.2"
+    "typescript": "^4.4.3"
   }
 }
