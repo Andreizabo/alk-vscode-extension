@@ -154,6 +154,92 @@ function replacePath(path: string) {
     return parts.join(separator);
 }
 
+function runAlkFile(context: vscode.ExtensionContext, alkProvider: AlkViewProvider, alkOutput: vscode.OutputChannel,javaInstalled: boolean, exhaustive = false)
+{
+	console.log('runAlkFile');
+	if (!javaInstalled)
+	{
+		displayJavaHelp(alkOutput);
+		return;
+	}
+
+	if(errorExists) {
+		// vscode.window.activeTextEditor?.setDecorations(errorDecoration, []);
+		for (let key in errorDecorations) {
+			let value = errorDecorations[key];
+			value['decoration'].dispose();
+			value['errorMessages'] = [];
+			delete errorDecorations[key];
+		}
+		console.log("Cleared");
+		errorExists = false;
+	}
+	const editor = vscode.window.activeTextEditor;
+	//var terminal = vscode.window.activeTerminal;
+	if (!editor) 
+	{
+		vscode.window.showErrorMessage('No active editor');
+		return;
+	}
+	
+	const alkRunScript = os.type() === 'Windows_NT' ? 'alki.bat' : 'alki.sh';
+	const alkPath = path.join(context.extensionUri.fsPath, 'media', 'alk', 'v3.0', 'bin', alkRunScript);
+	if (!alkPath)
+	{
+		vscode.window.showErrorMessage('No alk path configured');
+		return;
+	}
+	// if (!terminal)
+	// {
+	// 	terminal = vscode.window.createTerminal('Alk');
+	// }
+	const options = alkProvider.getOptionsString(exhaustive);
+	
+	const filePath = editor.document.uri.fsPath;
+	//terminal.show();
+	//terminal.sendText(`${alkPath} -a ${path} ${options}`);
+	const cp = require('child_process');
+	const command = (os.type() === 'Windows_NT' ? '' : '/bin/bash ') + `"${alkPath}" -a "${filePath}" ${options}`;
+	if (vscode.workspace.getConfiguration('alk').get('showCommand'))
+	{
+		alkOutput.appendLine(command);
+	}
+	else
+	{
+		alkOutput.appendLine(`Running ${filePath}`);
+	}
+	cp.exec(command, (err: any, stdout: any, stderr: any) => {
+		
+		alkOutput.appendLine(os.type() === 'Windows_NT' ? replacePath(stdout) : stdout);
+		alkOutput.appendLine(stderr);
+		if (stdout || stderr) { 
+			handleErrors(stdout, stderr);
+		}
+		alkOutput.show(true);
+		if (err) {
+			console.log(`err: ${err}`);
+		}
+
+		vscode.workspace.onDidChangeTextDocument(_change => {
+			if (_change.document === editor.document) 
+			{
+				if(errorExists) {
+					// vscode.window.activeTextEditor?.setDecorations(errorDecoration, []);
+					for (let key in errorDecorations) {
+						let value = errorDecorations[key];
+						value['decoration'].dispose();
+						value['errorMessages'] = [];
+						delete errorDecorations[key];
+					}
+					console.log(_change);
+					console.log("Cleared");
+					errorExists = false;
+				}
+			}
+		});
+	});
+}
+
 export function activate(context: vscode.ExtensionContext) 
 {
 	console.log('Extension active');
@@ -162,85 +248,15 @@ export function activate(context: vscode.ExtensionContext)
 	const javaInstalled = checkJavaInstalled(alkOutput);
 
 	let disposable = vscode.commands.registerCommand('alk.run', () => {
-		if (!javaInstalled)
-		{
-			displayJavaHelp(alkOutput);
-			return;
-		}
+		runAlkFile(context, alkProvider, alkOutput, javaInstalled, false);
+	});
 
-		if(errorExists) {
-			// vscode.window.activeTextEditor?.setDecorations(errorDecoration, []);
-			for (let key in errorDecorations) {
-				let value = errorDecorations[key];
-				value['decoration'].dispose();
-				value['errorMessages'] = [];
-				delete errorDecorations[key];
-			}
-			console.log("Cleared");
-			errorExists = false;
-		}
-		const editor = vscode.window.activeTextEditor;
-		//var terminal = vscode.window.activeTerminal;
-		if (!editor) 
-		{
-			vscode.window.showErrorMessage('No active editor');
-			return;
-		}
-		
-		const alkRunScript = os.type() === 'Windows_NT' ? 'alki.bat' : 'alki.sh';
-		const alkPath = path.join(context.extensionUri.fsPath, 'media', 'alk', 'v3.0', 'bin', alkRunScript);
-		if (!alkPath)
-		{
-			vscode.window.showErrorMessage('No alk path configured');
-			return;
-		}
-		// if (!terminal)
-		// {
-		// 	terminal = vscode.window.createTerminal('Alk');
-		// }
-		const options = alkProvider.getOptionsString();
-		
-		const filePath = editor.document.uri.fsPath;
-		//terminal.show();
-		//terminal.sendText(`${alkPath} -a ${path} ${options}`);
-		const cp = require('child_process');
-		const command = (os.type() === 'Windows_NT' ? '' : '/bin/bash ') + `"${alkPath}" -a "${filePath}" ${options}`;
-		cp.exec(command, (err: any, stdout: any, stderr: any) => {
-			if (vscode.workspace.getConfiguration('alk').get('showCommand'))
-			{
-				alkOutput.appendLine(command);
-			}
-			alkOutput.appendLine(os.type() === 'Windows_NT' ? replacePath(stdout) : stdout);
-			alkOutput.appendLine(stderr);
-			if (stdout || stderr) { 
-				handleErrors(stdout, stderr);
-			}
-			alkOutput.show(true);
-			if (err) {
-				console.log(`err: ${err}`);
-			}
-
-			vscode.workspace.onDidChangeTextDocument(_change => {
-				if (_change.document === editor.document) 
-				{
-					if(errorExists) {
-						// vscode.window.activeTextEditor?.setDecorations(errorDecoration, []);
-						for (let key in errorDecorations) {
-							let value = errorDecorations[key];
-							value['decoration'].dispose();
-							value['errorMessages'] = [];
-							delete errorDecorations[key];
-						}
-						console.log(_change);
-						console.log("Cleared");
-						errorExists = false;
-					}
-				}
-			});
-		});
+	let exhaustiveDisposable = vscode.commands.registerCommand('alk.runExhaustive', () => {
+		runAlkFile(context, alkProvider, alkOutput, javaInstalled, true);
 	});
 
 	context.subscriptions.push(disposable);
+	context.subscriptions.push(exhaustiveDisposable);
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider(AlkViewProvider.viewType, alkProvider)
 	);

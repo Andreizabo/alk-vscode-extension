@@ -24,7 +24,7 @@
                 "category": "Alk"
             },
             {
-                "command": "alk.run-exh",
+                "command": "alk.runExhaustive",
                 "title": "Run Alk Exhaustive",
                 "category": "Alk"
             }
@@ -93,7 +93,7 @@
                 },
                 {
                     "when": "resourceLangId == alk",
-                    "command": "alk.run-exh",
+                    "command": "alk.runExhaustive",
                     "group": "z_commands"
                 }
             ]
