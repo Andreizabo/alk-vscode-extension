@@ -92,8 +92,14 @@
                 "path": "./snippets.json"
             }
         ],
+        "submenus": [
+            {
+              "id": "alk.menu",
+              "label": "Alk"
+            }
+        ],
         "menus": {
-            "editor/context": [
+            "alk.menu": [
                 {
                     "when": "resourceLangId == alk && alk.canRun",
                     "command": "alk.run",
@@ -107,6 +113,20 @@
                 {
                     "when": "resourceLangId == alk && !alk.canRun",
                     "command": "alk.stop",
+                    "group": "z_commands"
+                }
+            ],
+            "editor/context": [
+                {
+                    "when": "resourceLangId == alk",
+                    "submenu": "alk.menu",
+                    "group": "z_commands"
+                }
+            ],
+            "editor/title": [
+                {
+                    "when": "resourceLangId == alk",
+                    "submenu": "alk.menu",
                     "group": "z_commands"
                 }
             ]
