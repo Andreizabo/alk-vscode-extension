@@ -42,6 +42,7 @@ Extensie pentru limbajul Alk. În acest moment are următoarele feature-uri:
   </br></br>Acum putem alege fișierul creat, sau alt fișier, ca și input în loc să folosim perechi create in interfață.</br>
   ![run](/media/pics/input-file.png)
 
+  ### Link-uri utile
   Puteți citi [manualul de referinta](https://github.com/alk-language/java-semantics/wiki/Reference-Manual) pentru a vă familiariza cu sintaxa `Alk`.
   De asemenea puteți citi wiki-ul [Alk-by example](https://github.com/alk-language/java-semantics/wiki/Alk-by-examples) pentru a înțelege cum se poate utiliza `Alk` într-un context real.
 
@@ -114,6 +115,7 @@ Extension for the Alk programming language. Right now, the following features ar
   </br></br>Now we can choose the created file, or any file, as input instead of using pairs defined in the interface.</br>
   ![run](/media/pics/input-file.png)
 
+  ### Useful links
   Read the [reference manual](https://github.com/alk-language/java-semantics/wiki/Reference-Manual) to review the Alk syntax.
   Also consider the [Alk-by example](https://github.com/alk-language/java-semantics/wiki/Alk-by-examples) wiki to understand how Alk behaves in real-scenarios.
 
