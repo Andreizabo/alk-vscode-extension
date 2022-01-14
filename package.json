@@ -97,8 +97,8 @@
         ],
         "submenus": [
             {
-              "id": "alk.menu",
-              "label": "Alk"
+                "id": "alk.menu",
+                "label": "Alk"
             }
         ],
         "menus": {
