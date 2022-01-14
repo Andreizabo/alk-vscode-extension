@@ -4,7 +4,7 @@ import * as os from 'os';
 import { AlkViewProvider } from './alkViewProvider';
 import { cpuUsage } from 'process';
 import { ChildProcess } from 'child_process';
-import axios from 'axios'
+import axios from 'axios';
 import { writeFile } from 'fs';
 
 let errorExists = false;
@@ -213,6 +213,7 @@ function runAlkFile(context: vscode.ExtensionContext, alkProvider: AlkViewProvid
 	{
 		alkOutput.appendLine(`Running ${filePath}`);
 	}
+	alkOutput.show(true);
 	
 	vscode.commands.executeCommand('setContext', 'alk.canRun', false);
 	currentRunningProcess = cp.exec(command, {detached: true}, (err: any, stdout: any, stderr: any) => {
@@ -293,23 +294,23 @@ export function activate(context: vscode.ExtensionContext)
 }
 
 export async function vers() {
-    const url: string = 'your-url.example';
+    // const url: string = 'your-url.example';
 
-    try {
-        // Checks version
-        var response = await axios.get("https://api.github.com/repos/alk-language/java-semantics/releases/latest");
-        console.log(response['data']['tag_name']);
-        // Downloads new version
-        const fs = require('fs');
-        const download = require('download');
-        const unzipper = require('unzipper');
-        fs.writeFileSync('./alk.zip', await download('https://github.com/alk-language/java-semantics/releases/download/3.0/alki-v3.0.zip'));
-        fs.createReadStream('./alk.zip').pipe(unzipper.Extract({ path: './alk-temp-folder' }));
-        console.log(`./alk-temp-folder/v${response['data']['tag_name']}/bin/alk.jar`);
-        fs.rename(`./alk-temp-folder/v${response['data']['tag_name']}/bin/alk.jar`, 'E:\\alk.jar');   
-    } catch (exception) {
-        process.stderr.write(`ERROR received from ${url}: ${exception}\n`);
-    }
+    // try {
+    //     // Checks version
+    //     var response = await axios.get("https://api.github.com/repos/alk-language/java-semantics/releases/latest");
+    //     console.log(response['data']['tag_name']);
+    //     // Downloads new version
+    //     const fs = require('fs');
+    //     const download = require('download');
+    //     const unzipper = require('unzipper');
+    //     fs.writeFileSync('./alk.zip', await download('https://github.com/alk-language/java-semantics/releases/download/3.0/alki-v3.0.zip'));
+    //     fs.createReadStream('./alk.zip').pipe(unzipper.Extract({ path: './alk-temp-folder' }));
+    //     console.log(`./alk-temp-folder/v${response['data']['tag_name']}/bin/alk.jar`);
+    //     fs.rename(`./alk-temp-folder/v${response['data']['tag_name']}/bin/alk.jar`, 'E:\\alk.jar');   
+    // } catch (exception) {
+    //     process.stderr.write(`ERROR received from ${url}: ${exception}\n`);
+    // }
 }
 
 export function deactivate() {}
