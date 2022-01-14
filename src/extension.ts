@@ -289,66 +289,69 @@ async function downloadAlk(version: string, alkPath: any) {
     // Download new alk
     await fs.writeFileSync(path.join('.', 'alk.zip'), await download('https://github.com/alk-language/java-semantics/releases/download/3.0/alki-v3.0.zip'));
     // Unzip new alk
-    await fs.createReadStream(path.join('.', 'alk.zip')).pipe(unzipper.Extract({ path: path.join('.', 'alk-temp-folder') }));
-    // Delete old alk folder
-    try {
-        await del(alkPath, { force: true });
-        console.log(`Old alk folder deleted!`);
-        await fs.mkdir(alkPath, async function (err: any) {
-            if (err) {
-                console.log(`Error recreating alk folder. ${err}`);
-            } else {
-                console.log("Successfully created alk folder!");
-                // Create new version file
-                await fs.writeFile(path.join(alkPath, 'version.txt'), version, function (err: any) {
-                    if (err) {
-                        console.log(`Error creating new version file. ${err}`);
-                    }
-                    console.log('Created new version file!');
-                });
-                // Move files
-                await mv(path.join('.', 'alk-temp-folder', `v${version}`, 'bin', 'alk.jar'), path.join(alkPath, 'alk.jar'), async function (err: any) {
-                    if (err) {
-                        console.log(`Error moving files. ${err}`);
-                    } else {
-                        console.log("Successfully moved the jar!");
+    await fs.createReadStream(path.join('.', 'alk.zip')).pipe(unzipper.Extract({ path: path.join('.', 'alk-temp-folder') })).on('close', async function () {
+        // Delete old alk folder
+        try {
+            await del(alkPath, { force: true });
+            console.log(`Old alk folder deleted!`);
+            await fs.mkdir(alkPath, async function (err: any) {
+                if (err) {
+                    console.log(`Error recreating alk folder. ${err}`);
+                } else {
+                    console.log("Successfully created alk folder!");
+                    // Create new version file
+                    await fs.writeFile(path.join(alkPath, 'version.txt'), version, function (err: any) {
+                        if (err) {
+                            console.log(`Error creating new version file. ${err}`);
+                        }
+                        console.log('Created new version file!');
+                    });
+                    // Move files
+                    await mv(path.join('.', 'alk-temp-folder', `v${version}`, 'bin', 'alk.jar'), path.join(alkPath, 'alk.jar'), async function (err: any) {
+                        if (err) {
+                            console.log(`Error moving files. ${err}`);
+                        } else {
+                            console.log("Successfully moved the jar!");
+                        }
                         await mv(path.join('.', 'alk-temp-folder', `v${version}`, 'bin', 'alki.sh'), path.join(alkPath, 'alki.sh'), async function (err: any) {
                             if (err) {
                                 console.log(`Error moving files. ${err}`);
                             } else {
                                 console.log("Successfully moved the sh!");
-                                await mv(path.join('.', 'alk-temp-folder', `v${version}`, 'bin', 'alki.bat'), path.join(alkPath, 'alki.bat'), async function (err: any) {
+                            }
+                            await mv(path.join('.', 'alk-temp-folder', `v${version}`, 'bin', 'alki.bat'), path.join(alkPath, 'alki.bat'), async function (err: any) {
+                                if (err) {
+                                    console.log(`Error moving files. ${err}`);
+                                } else {
+                                    console.log("Successfully moved the bat!");
+                                }
+                                //Delete downloaded folder
+                                try {
+                                    await del(path.join('.', 'alk-temp-folder'));
+                                    console.log(`Folder deleted!`);
+                                } catch (err) {
+                                    console.error(`Error while deleting folder. ${err}`);
+                                }
+                                // Delete downloaded archive
+                                await fs.unlink(path.join('.', 'alk.zip'), (err: any) => {
                                     if (err) {
-                                        console.log(`Error moving files. ${err}`);
-                                    } else {
-                                        console.log("Successfully moved the bat!");
-                                        //Delete downloaded folder
-                                        try {
-                                            await del(path.join('.', 'alk-temp-folder'));
-                                            console.log(`Folder deleted!`);
-                                        } catch (err) {
-                                            console.error(`Error while deleting folder. ${err}`);
-                                        }
-                                        // Delete downloaded archive
-                                        await fs.unlink(path.join('.', 'alk.zip'), (err: any) => {
-                                            if (err) {
-                                                console.error(`Error while deleting archive. ${err}`);
-                                                return
-                                            }
-                                            console.log('Archive deleted.');
-                                        });
+                                        console.error(`Error while deleting archive. ${err}`);
+                                        return
                                     }
+                                    console.log('Archive deleted.');
                                 });
                             }
-                        });
+                            );
+                        }
+                        );
                     }
-                });
-            }
-        });
-    } catch (err) {
-        console.error(`Error while deleting old alk folder. ${err}`);
-    }
-
+                    );
+                }
+            });
+        } catch (err) {
+            console.error(`Error while deleting old alk folder. ${err}`);
+        }
+    });
 }
 
 export function deactivate() { }

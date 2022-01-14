@@ -146,7 +146,7 @@
         }
     },
     "scripts": {
-        "vscode:prepublish": "node ./src/utils/clean_newlines.js ./media/alk/v3.0/bin/alki.sh && npm run compile",
+        "vscode:prepublish": "npm run compile",
         "compile": "tsc -p ./",
         "watch": "tsc -watch -p ./",
         "pretest": "npm run compile && npm run lint",
@@ -172,6 +172,7 @@
         "download": "^8.0.0",
         "mv": "^2.1.1",
         "tree-kill": "^1.2.2",
-        "unzipper": "^0.10.11"
+        "unzipper": "^0.10.11",
+        "vsce": "^2.6.3"
     }
 }
