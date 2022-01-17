@@ -273,14 +273,14 @@ async function vers(context: vscode.ExtensionContext) {
         }
         var response = await axios.get("https://api.github.com/repos/alk-language/java-semantics/releases/latest");
         if (response['data']['tag_name'] !== data) {
-            vscode.window.showInformationMessage(`Updating Alk from v${data} to latest version (v${response['data']['tag_name']})`);
+            vscode.window.showInformationMessage(`Updating Alk from ${data} to latest version (${response['data']['tag_name']})`);
             console.log('Updating alk');
             await downloadAlk(response['data']['tag_name'], alkPath);
             console.log('Updated alk');
-            vscode.window.showInformationMessage(`Updated Alk from v${data} to latest version (v${response['data']['tag_name']})`);
+            vscode.window.showInformationMessage(`Updated Alk from ${data} to latest version (${response['data']['tag_name']})`);
         }
         else {
-            vscode.window.showInformationMessage(`Alk is up to date (v${response['data']['tag_name']})`);
+            vscode.window.showInformationMessage(`Alk is up to date (${response['data']['tag_name']})`);
         }
     });
 }
@@ -291,10 +291,13 @@ async function downloadAlk(version: string, alkPath: any) {
     const unzipper = require('unzipper');
     const mv = require('mv');
     const del = require('del');
+    const tmpPath = os.type() === 'Windows_NT' ? '.' : '/tmp';
+    const tmpArchive = path.join(tmpPath, 'alk.zip');
+    const tmpFolder = path.join(tmpPath, 'alk-temp-folder');
     // Download new alk
-    await fs.writeFileSync(path.join('.', 'alk.zip'), await download('https://github.com/alk-language/java-semantics/releases/download/3.0/alki-v3.0.zip'));
+    await fs.writeFileSync(tmpArchive, await download('https://github.com/alk-language/java-semantics/releases/download/3.0/alki-v3.0.zip'));
     // Unzip new alk
-    await fs.createReadStream(path.join('.', 'alk.zip')).pipe(unzipper.Extract({ path: path.join('.', 'alk-temp-folder') })).on('close', async function () {
+    await fs.createReadStream(tmpArchive).pipe(unzipper.Extract({ path: tmpFolder })).on('close', async function () {
         // Delete old alk folder
         try {
             await del(alkPath, { force: true });
@@ -312,19 +315,19 @@ async function downloadAlk(version: string, alkPath: any) {
                         console.log('Created new version file!');
                     });
                     // Move files
-                    await mv(path.join('.', 'alk-temp-folder', `v${version}`, 'bin', 'alk.jar'), path.join(alkPath, 'alk.jar'), async function (err: any) {
+                    await mv(path.join(tmpFolder, `v${version}`, 'bin', 'alk.jar'), path.join(alkPath, 'alk.jar'), async function (err: any) {
                         if (err) {
                             console.log(`Error moving files. ${err}`);
                         } else {
                             console.log("Successfully moved the jar!");
                         }
-                        await mv(path.join('.', 'alk-temp-folder', `v${version}`, 'bin', 'alki.sh'), path.join(alkPath, 'alki.sh'), async function (err: any) {
+                        await mv(path.join(tmpFolder, `v${version}`, 'bin', 'alki.sh'), path.join(alkPath, 'alki.sh'), async function (err: any) {
                             if (err) {
                                 console.log(`Error moving files. ${err}`);
                             } else {
                                 console.log("Successfully moved the sh!");
                             }
-                            await mv(path.join('.', 'alk-temp-folder', `v${version}`, 'bin', 'alki.bat'), path.join(alkPath, 'alki.bat'), async function (err: any) {
+                            await mv(path.join(tmpFolder, `v${version}`, 'bin', 'alki.bat'), path.join(alkPath, 'alki.bat'), async function (err: any) {
                                 if (err) {
                                     console.log(`Error moving files. ${err}`);
                                 } else {
@@ -332,13 +335,13 @@ async function downloadAlk(version: string, alkPath: any) {
                                 }
                                 //Delete downloaded folder
                                 try {
-                                    await del(path.join('.', 'alk-temp-folder'));
+                                    await del(tmpFolder);
                                     console.log(`Folder deleted!`);
                                 } catch (err) {
                                     console.error(`Error while deleting folder. ${err}`);
                                 }
                                 // Delete downloaded archive
-                                await fs.unlink(path.join('.', 'alk.zip'), (err: any) => {
+                                await fs.unlink(tmpArchive, (err: any) => {
                                     if (err) {
                                         console.error(`Error while deleting archive. ${err}`);
                                         return
