@@ -3,7 +3,7 @@
     "displayName": "Alk Visual Studio Code Extension",
     "description": "",
     "publisher": "AlkUaic",
-    "version": "0.12.0",
+    "version": "0.13.0",
     "engines": {
         "vscode": "^1.62.0"
     },
