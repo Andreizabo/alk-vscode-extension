@@ -149,7 +149,14 @@
                     "group": "z_commands"
                 }
             ]
-        }
+        },
+        "themes": [
+            {
+                "label": "alk",
+                "uiTheme": "vs-dark",
+                "path": "./themes/alk-color-theme.json"
+            }
+        ]
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",
