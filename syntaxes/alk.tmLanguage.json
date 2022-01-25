@@ -36,10 +36,6 @@
 				    "match": "\\b(uniformNat|flip|uniformFloat|uniformPerm|Count|s.t.)\\b"
                 },
                 {
-<<<<<<< HEAD
-                    "name": "comment",
-                    "match": "(\/\/.*|\/\\*.*?\\*\/)"
-=======
                     "name": "comment.line",
                     "match": "\/\/.*"
                 },
@@ -47,7 +43,6 @@
                     "name": "comment.block",
                     "begin": "\/\\*",
                     "end": "\\*\/"
->>>>>>> c5681702d77488e03816038f8fa1bdfc9ef71b24
                 }
             ]
 		},
