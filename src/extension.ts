@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { AlkViewProvider } from './alkViewProvider';
 import { ChildProcess } from 'child_process';
-import axios from 'axios'
+import axios from 'axios';
 
 let errorExists = false;
 
@@ -266,7 +266,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 async function vers(context: vscode.ExtensionContext) {
     const alkPath = path.join(context.extensionUri.fsPath, 'media', 'alk');
-    const fs = require('fs')
+    const fs = require('fs');
     await fs.readFile(path.join(alkPath, 'version.txt'), 'utf8', async function (err: any, data: any) {
         if (err) {
             return console.log(err);
@@ -344,7 +344,7 @@ async function downloadAlk(version: string, alkPath: any) {
                                 await fs.unlink(tmpArchive, (err: any) => {
                                     if (err) {
                                         console.error(`Error while deleting archive. ${err}`);
-                                        return
+                                        return;
                                     }
                                     console.log('Archive deleted.');
                                 });
