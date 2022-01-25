@@ -3,10 +3,16 @@
     "displayName": "Alk Visual Studio Code Extension",
     "description": "",
     "publisher": "AlkUaic",
-    "version": "0.8.0",
+    "version": "0.14.0",
     "engines": {
         "vscode": "^1.62.0"
     },
+    "icon": "media/ALK_LOGO.png",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/Andreizabo/alk-vscode-extension.git"
+    },
+    "homepage": "https://github.com/Andreizabo/alk-vscode-extension/blob/main/README.md",
     "categories": [
         "Programming Languages",
         "Snippets"
@@ -143,10 +149,17 @@
                     "group": "z_commands"
                 }
             ]
-        }
+        },
+        "themes": [
+            {
+                "label": "alk",
+                "uiTheme": "vs-dark",
+                "path": "./themes/alk-color-theme.json"
+            }
+        ]
     },
     "scripts": {
-        "vscode:prepublish": "node ./src/utils/clean_newlines.js ./media/alk/v3.0/bin/alki.sh && npm run compile",
+        "vscode:prepublish": "npm run compile",
         "compile": "tsc -p ./",
         "watch": "tsc -watch -p ./",
         "pretest": "npm run compile && npm run lint",
@@ -168,8 +181,11 @@
     },
     "dependencies": {
         "axios": "^0.24.0",
+        "del": "^6.0.0",
         "download": "^8.0.0",
+        "mv": "^2.1.1",
+        "tree-kill": "^1.2.2",
         "unzipper": "^0.10.11",
-        "tree-kill": "^1.2.2"
+        "vsce": "^2.6.3"
     }
 }
