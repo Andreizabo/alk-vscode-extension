@@ -36,8 +36,13 @@
 				    "match": "\\b(uniformNat|flip|uniformFloat|uniformPerm|Count|s.t.)\\b"
                 },
                 {
-                    "name": "comment",
-                    "match": "(\/\/.*|\/\\*(.|\\n)*?\\*\/)"
+                    "name": "comment.line",
+                    "match": "\/\/.*"
+                },
+                {
+                    "name": "comment.block",
+                    "begin": "\/\\*",
+                    "end": "\\*\/"
                 }
             ]
 		},
