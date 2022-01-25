@@ -63,8 +63,17 @@ export class AlkViewProvider implements vscode.WebviewViewProvider
                     }
                     else
                     {
-                        const projectRoot = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri.fsPath : '';
-                        options += `${path.join(projectRoot, this._inputFile)}`;
+                        const editor = vscode.window.activeTextEditor;
+                        if (editor)
+                        {
+                            const filePath = editor.document.uri.fsPath;
+                            const inputFilePath = path.join(path.dirname(filePath), this._inputFile);
+                            options += `"${inputFilePath}" `;
+                        }
+                        else
+                        {
+                            vscode.window.showErrorMessage('No active editor');
+                        }
                     }
                 }
                 options += ' ';
@@ -78,12 +87,18 @@ export class AlkViewProvider implements vscode.WebviewViewProvider
         const saveFile = await vscode.window.showInputBox({
             prompt: 'Input file',
         });
-        const projectRoot = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
-        if (saveFile && projectRoot)
+        const editor = vscode.window.activeTextEditor;
+        const filePath = editor ? editor.document.uri.fsPath : undefined;
+        if (saveFile && filePath)
         {
-            const inputFile = path.join(projectRoot, saveFile);
+            const inputFile = path.join(path.dirname(filePath), saveFile);
             const inputFileContent = this.getInputString();
             fs.writeFileSync(inputFile, inputFileContent);
+            vscode.window.showInformationMessage(`Successfully saved input file to ${inputFile}`);
+        }
+        else
+        {
+            vscode.window.showErrorMessage("Error saving input. Make sure you enter a valid file name and that you have a file open.");
         }
     }
 
