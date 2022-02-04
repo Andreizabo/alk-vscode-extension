@@ -276,8 +276,6 @@ async function vers(context: vscode.ExtensionContext) {
             vscode.window.showInformationMessage(`Updating Alk from ${data} to latest version (${response['data']['tag_name']})`);
             console.log('Updating alk');
             await downloadAlk(response['data']['tag_name'], alkPath);
-            console.log('Updated alk');
-            vscode.window.showInformationMessage(`Updated Alk from ${data} to latest version (${response['data']['tag_name']})`);
         }
         else {
             vscode.window.showInformationMessage(`Alk is up to date (${response['data']['tag_name']})`);
@@ -294,8 +292,10 @@ async function downloadAlk(version: string, alkPath: any) {
     const tmpPath = os.type() === 'Windows_NT' ? '.' : '/tmp';
     const tmpArchive = path.join(tmpPath, 'alk.zip');
     const tmpFolder = path.join(tmpPath, 'alk-temp-folder');
+    const tagName = version;
+    version = version.replace('v', '');
     // Download new alk
-    await fs.writeFileSync(tmpArchive, await download('https://github.com/alk-language/java-semantics/releases/download/3.0/alki-v3.0.zip'));
+    await fs.writeFileSync(tmpArchive, await download(`https://github.com/alk-language/java-semantics/releases/download/${tagName}/alki-v${version}.zip`));
     // Unzip new alk
     await fs.createReadStream(tmpArchive).pipe(unzipper.Extract({ path: tmpFolder })).on('close', async function () {
         // Delete old alk folder
@@ -333,20 +333,29 @@ async function downloadAlk(version: string, alkPath: any) {
                                 } else {
                                     console.log("Successfully moved the bat!");
                                 }
-                                //Delete downloaded folder
-                                try {
-                                    await del(tmpFolder);
-                                    console.log(`Folder deleted!`);
-                                } catch (err) {
-                                    console.error(`Error while deleting folder. ${err}`);
-                                }
-                                // Delete downloaded archive
-                                await fs.unlink(tmpArchive, (err: any) => {
+                                await mv(path.join(tmpFolder, `v${version}`, 'bin', 'lib'), path.join(alkPath, 'lib'), async function (err: any) {
                                     if (err) {
-                                        console.error(`Error while deleting archive. ${err}`);
-                                        return;
+                                        console.log(`Error moving files. ${err}`);
+                                    } else {
+                                        console.log("Successfully moved lib!");
                                     }
-                                    console.log('Archive deleted.');
+                                    //Delete downloaded folder
+                                    try {
+                                        await del(tmpFolder);
+                                        console.log(`Folder deleted!`);
+                                    } catch (err) {
+                                        console.error(`Error while deleting folder. ${err}`);
+                                    }
+                                    // Delete downloaded archive
+                                    await fs.unlink(tmpArchive, (err: any) => {
+                                        if (err) {
+                                            console.error(`Error while deleting archive. ${err}`);
+                                            return;
+                                        }
+                                        console.log('Archive deleted.');
+                                    });
+                                    console.log('Updated alk');
+                                    vscode.window.showInformationMessage(`Updated Alk to latest version (${version})`);
                                 });
                             }
                             );
