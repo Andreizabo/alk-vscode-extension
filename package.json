@@ -76,18 +76,18 @@
                     "default": false,
                     "order": 1
                 },
-                "alk.inputType": {
+                "alk.inputMode": {
                     "enum": [
                         "text",
                         "file"
                     ],
-                    "description": "The type of input to be used.",
+                    "description": "The mode of input to be used.",
                     "default": "text",
                     "order": 2
                 },
-                "alk.inputFile": {
+                "alk.inputPath": {
                     "type": "string",
-                    "description": "The file to be used as input.",
+                    "description": "The path to the file to be used as input.",
                     "default": "",
                     "order": 4
                 },

@@ -22,14 +22,11 @@ Extension for the `Alk` programming language. Right now, the following features 
   </br></br></br>
   * The settings of `Alk` can be accessed using the `Alk Settings` options from the `Alk` submenu when right clicking.
   ![run](/media/pics/settings-click.png)
-  * They can also be accessed by using the `Command Pallete` (default keybind `Ctrl+Shift+P`) and searching for `settings`. </br>
-  ![run](/media/pics/settings.png)
-  </br></br> Then searching for `alk` to easily find the options.</br>
   ![run](/media/pics/alk-settings.png)
   * The `Input` options allow the use as input of either of file or a configuration directly written in the interface. The `Input Active` option must be checked to use custom input.
-  </br></br> To create input directly from the interface first the `text` option must be choosen in `Input Type`, and then key-value pairs can be added, removed and modified in the `Input Text` setting.</br>
+  </br></br> To create input directly from the interface first the `text` option must be choosen in `Input Mode`, and then key-value pairs can be added, removed and modified in the `Input Text` setting.</br>
   ![run](/media/pics/input-act.png)
-  </br></br>To use a file as input first the `file` option must be choosen in `Input Type`, and then the name of the file must be entered in the `Input File` setting.</br>
+  </br></br>To use a file as input first the `file` option must be choosen in `Input Mode`, and then the name of the file must be entered in the `Input Path` setting.</br>
   ![run](/media/pics/input-file.png)
 
   ## Useful links
