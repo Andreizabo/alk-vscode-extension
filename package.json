@@ -63,17 +63,37 @@
                     "type": "boolean",
                     "description": "Whether to show the command used to run the algorithm in the output.",
                     "default": true
+                },
+                "alk.inputActive": {
+                    "type": "boolean",
+                    "description": "Whether to use the input provided below as the initial configuration when running an algorithm.",
+                    "default": false,
+                    "order": 1
+                },
+                "alk.inputType": {
+                    "enum": [
+                        "text",
+                        "file"
+                    ],
+                    "description": "The type of input to be used.",
+                    "default": "text",
+                    "order": 2
+                },
+                "alk.inputFile": {
+                    "type": "string",
+                    "description": "The file to be used as input.",
+                    "default": "",
+                    "order": 4
+                },
+                "alk.inputText": {
+                    "type": "object",
+                    "description": "The values to be used as input.",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "order": 3
                 }
             }
-        },
-        "views": {
-            "explorer": [
-                {
-                    "type": "webview",
-                    "id": "alk.optionsView",
-                    "name": "Alk Options"
-                }
-            ]
         },
         "languages": [
             {

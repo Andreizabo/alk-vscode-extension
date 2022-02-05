@@ -4,4 +4,5 @@ node_modules
 .vscode-test/
 *.vsix
 package-lock.json
+*/version.txt
 media/alk/

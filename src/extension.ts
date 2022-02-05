@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as os from 'os';
-import { AlkViewProvider } from './alkViewProvider';
+// import { AlkViewProvider } from './alkViewProvider';
 import { ChildProcess } from 'child_process';
 import axios from 'axios';
 
@@ -141,7 +141,73 @@ function replacePath(path: string) {
 
 let currentRunningProcess: ChildProcess | null = null;
 
-function runAlkFile(context: vscode.ExtensionContext, alkProvider: AlkViewProvider, alkOutput: vscode.OutputChannel, javaInstalled: boolean, exhaustive = false) {
+function getInputString()
+{
+    let input = "";
+    const inputDict: Object | undefined = vscode.workspace.getConfiguration('alk').get('inputText');
+    if (!inputDict)
+    {
+        console.log("Input object is undefinded");
+        return "";
+    }
+    for (const [key, value] of Object.entries(inputDict)) 
+    {
+        input += `${key} |-> ${value}\n`;
+    }
+    return input;
+}
+
+function getOptionsString(exhaustive: boolean)
+{
+    let options = '';
+    if (vscode.workspace.getConfiguration('alk').get('metadata'))
+    {
+        options += '-m ';
+    }
+    if (vscode.workspace.getConfiguration('alk').get('precision'))
+    {
+        options += `-p ${vscode.workspace.getConfiguration('alk').get('precision')} `;
+    }
+    if (exhaustive)
+    {
+        options += '-e ';
+    }
+    if (vscode.workspace.getConfiguration('alk').get('inputActive'))
+    {
+        options += '-i ';
+        if (vscode.workspace.getConfiguration('alk').get('inputType') === 'text')
+        {
+            options += '"';
+            options += getInputString().split('\n').join(" ").split('"').join('\\"');
+            options += '"';
+        }
+        else
+        {
+            const editor = vscode.window.activeTextEditor;
+            if (editor)
+            {
+                const filePath = editor.document.uri.fsPath;
+                const fileName : string | undefined = vscode.workspace.getConfiguration('alk').get('inputFile');
+                if (fileName)
+                {
+                    const inputFilePath = path.join(path.dirname(filePath), fileName);
+                    options += `"${inputFilePath}" `;
+                }
+                else
+                {
+                    console.log("Input file name is undefined");
+                }
+            }
+            else
+            {
+                vscode.window.showErrorMessage('No active editor');
+            }
+        }
+    }
+    return options;
+}
+
+function runAlkFile(context: vscode.ExtensionContext, alkOutput: vscode.OutputChannel, javaInstalled: boolean, exhaustive = false) {
     console.log('runAlkFile');
     if (!javaInstalled) {
         displayJavaHelp(alkOutput);
@@ -176,7 +242,7 @@ function runAlkFile(context: vscode.ExtensionContext, alkProvider: AlkViewProvid
     // {
     // 	terminal = vscode.window.createTerminal('Alk');
     // }
-    const options = alkProvider.getOptionsString(exhaustive);
+    const options = getOptionsString(exhaustive);
 
     const filePath = editor.document.uri.fsPath;
     //terminal.show();
@@ -229,16 +295,16 @@ export function activate(context: vscode.ExtensionContext) {
     console.log('Extension active');
     vers(context);
     vscode.commands.executeCommand('setContext', 'alk.canRun', true);
-    const alkProvider = new AlkViewProvider(context.extensionUri);
+    //const alkProvider = new AlkViewProvider(context.extensionUri);
     const alkOutput = vscode.window.createOutputChannel("Alk Output");
     const javaInstalled = checkJavaInstalled(alkOutput);
 
     let disposable = vscode.commands.registerCommand('alk.run', () => {
-        runAlkFile(context, alkProvider, alkOutput, javaInstalled, false);
+        runAlkFile(context, alkOutput, javaInstalled, false);
     });
 
     let exhaustiveDisposable = vscode.commands.registerCommand('alk.runExhaustive', () => {
-        runAlkFile(context, alkProvider, alkOutput, javaInstalled, true);
+        runAlkFile(context, alkOutput, javaInstalled, true);
     });
 
     let stopDisposable = vscode.commands.registerCommand('alk.stop', () => {
@@ -259,9 +325,9 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(disposable);
     context.subscriptions.push(exhaustiveDisposable);
     context.subscriptions.push(stopDisposable);
-    context.subscriptions.push(
-        vscode.window.registerWebviewViewProvider(AlkViewProvider.viewType, alkProvider)
-    );
+    //context.subscriptions.push(
+    //    vscode.window.registerWebviewViewProvider(AlkViewProvider.viewType, alkProvider)
+    //);
 }
 
 async function vers(context: vscode.ExtensionContext) {
@@ -308,7 +374,7 @@ async function downloadAlk(version: string, alkPath: any) {
                 } else {
                     console.log("Successfully created alk folder!");
                     // Create new version file
-                    await fs.writeFile(path.join(alkPath, 'version.txt'), version, function (err: any) {
+                    await fs.writeFile(path.join(alkPath, 'version.txt'), tagName, function (err: any) {
                         if (err) {
                             console.log(`Error creating new version file. ${err}`);
                         }
