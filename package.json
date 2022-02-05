@@ -41,6 +41,12 @@
                 "title": "Stop Alk",
                 "category": "Alk",
                 "icon": "$(stop)"
+            },
+            {
+                "command": "alk.options",
+                "title": "Alk Settings",
+                "category": "Alk",
+                "icon": "$(gear)"
             }
         ],
         "configuration": {
@@ -142,6 +148,11 @@
                 {
                     "when": "resourceLangId == alk && !alk.canRun",
                     "command": "alk.stop",
+                    "group": "z_commands"
+                },
+                {
+                    "when": "resourceLangId == alk",
+                    "command": "alk.options",
                     "group": "z_commands"
                 }
             ],

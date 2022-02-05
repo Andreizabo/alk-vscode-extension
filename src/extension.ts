@@ -322,9 +322,14 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
+    let optionsDisposable = vscode.commands.registerCommand('alk.options', () => {
+        vscode.commands.executeCommand('workbench.action.openSettings', '@ext:AlkUaic.Alk');
+    });
+
     context.subscriptions.push(disposable);
     context.subscriptions.push(exhaustiveDisposable);
     context.subscriptions.push(stopDisposable);
+    context.subscriptions.push(optionsDisposable);
     //context.subscriptions.push(
     //    vscode.window.registerWebviewViewProvider(AlkViewProvider.viewType, alkProvider)
     //);
@@ -339,7 +344,12 @@ async function vers(context: vscode.ExtensionContext) {
         }
         var response = await axios.get("https://api.github.com/repos/alk-language/java-semantics/releases/latest");
         if (response['data']['tag_name'] !== data) {
-            vscode.window.showInformationMessage(`Updating Alk from ${data} to latest version (${response['data']['tag_name']})`);
+            if (data === 'not installed') {
+                vscode.window.showInformationMessage(`Setting up Alk for the first time`);
+            }
+            else {
+                vscode.window.showInformationMessage(`Updating Alk from ${data} to latest version (${response['data']['tag_name']})`);
+            }
             console.log('Updating alk');
             await downloadAlk(response['data']['tag_name'], alkPath);
         }
