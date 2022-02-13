@@ -175,7 +175,7 @@ function getOptionsString(exhaustive: boolean)
     if (vscode.workspace.getConfiguration('alk').get('inputActive'))
     {
         options += '-i ';
-        if (vscode.workspace.getConfiguration('alk').get('inputType') === 'text')
+        if (vscode.workspace.getConfiguration('alk').get('inputMode') === 'text')
         {
             options += '"';
             options += getInputString().split('\n').join(" ").split('"').join('\\"');
@@ -187,7 +187,7 @@ function getOptionsString(exhaustive: boolean)
             if (editor)
             {
                 const filePath = editor.document.uri.fsPath;
-                const fileName : string | undefined = vscode.workspace.getConfiguration('alk').get('inputFile');
+                const fileName : string | undefined = vscode.workspace.getConfiguration('alk').get('inputPath');
                 if (fileName)
                 {
                     const inputFilePath = path.join(path.dirname(filePath), fileName);
