@@ -23,10 +23,14 @@ Extension for the `Alk` programming language. Right now, the following features 
   * The settings of `Alk` can be accessed using the `Alk Settings` options from the `Alk` submenu when right clicking.
   ![run](/media/pics/settings-click.png)
   ![run](/media/pics/alk-settings.png)
-  * The `Input` options allow the use as input of either of file or a configuration directly written in the interface. The `Input Active` option must be checked to use custom input.
+  * ### Settings: 
+    * The `Show Command` enables or disables showing the command used to run the algorithm in the output.
+    * The `Metadata` option <em>(equivalent of using `-m` as argument in the command line)</em> enables or disables showing metadata in the output.
+    * The `Precision` option <em>(equivalent of using `-p "x"`, where `"x"` is a number, as arguments in the command line)</em> sets the precision that will be used when running the algorithm.
+    * The `Input` options <em>(equivalent of using `-i "x"`, where `"x"` is either the path of the input file or a string containing variable-value assignments)</em> allow the use as input of either of file or a configuration directly written in the interface. The `Input Active` option must be checked to use custom input.
   </br></br> To create input directly from the interface first the `text` option must be choosen in `Input Mode`, and then key-value pairs can be added, removed and modified in the `Input Text` setting.</br>
   ![run](/media/pics/input-act.png)
-  </br></br>To use a file as input first the `file` option must be choosen in `Input Mode`, and then the name of the file must be entered in the `Input Path` setting.</br>
+  </br></br>    To use a file as input first the `file` option must be choosen in `Input Mode`, and then the name of the file must be entered in the `Input Path` setting.</br>
   ![run](/media/pics/input-file.png)
 
   ## Useful links
