@@ -72,7 +72,7 @@
                 },
                 "alk.inputActive": {
                     "type": "boolean",
-                    "description": "Whether to use the input provided below as the initial configuration when running an algorithm.",
+                    "description": "This must be checked if the algorithm to be executed has an input state.",
                     "default": false,
                     "order": 1
                 },
