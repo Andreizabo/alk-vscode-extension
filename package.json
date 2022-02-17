@@ -82,7 +82,7 @@
                         "File"
                     ],
                     "description": "The mode of input to be used. (Only if Input Active is checked)",
-                    "default": "text",
+                    "default": "Text",
                     "order": 2
                 },
                 "alk.inputPath": {

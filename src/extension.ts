@@ -175,7 +175,7 @@ function getOptionsString(exhaustive: boolean)
     if (vscode.workspace.getConfiguration('alk').get('inputActive'))
     {
         options += '-i ';
-        if (vscode.workspace.getConfiguration('alk').get('inputMode') === 'text')
+        if (vscode.workspace.getConfiguration('alk').get('inputMode') === 'Text')
         {
             options += '"';
             options += getInputString().split('\n').join(" ").split('"').join('\\"');
@@ -371,7 +371,7 @@ async function downloadAlk(version: string, alkPath: any) {
     const tagName = version;
     version = version.replace('v', '');
     // Download new alk
-    await fs.writeFileSync(tmpArchive, await download(`https://github.com/alk-language/java-semantics/releases/download/${tagName}/alki-v${version}.zip`));
+    await fs.writeFileSync(tmpArchive, await download(`https://github.com/alk-language/java-semantics/releases/download/${tagName}/alk-v${version}.zip`));
     // Unzip new alk
     await fs.createReadStream(tmpArchive).pipe(unzipper.Extract({ path: tmpFolder })).on('close', async function () {
         // Delete old alk folder
