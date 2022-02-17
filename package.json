@@ -57,17 +57,17 @@
                         "number",
                         "null"
                     ],
-                    "description": "The precision to be used when running an algorithm.",
-                    "default": null
+                    "description": "The number of digits after the floating point when running an algorithm.",
+                    "default": 10
                 },
                 "alk.metadata": {
                     "type": "boolean",
-                    "description": "Whether to show metadata (the final configuration) in the output.",
+                    "description": "This must be checked to show metadata (the final configuration) in the output.",
                     "default": true
                 },
                 "alk.showCommand": {
                     "type": "boolean",
-                    "description": "Whether to show the command used to run the algorithm in the output.",
+                    "description": "This must be checked to show the command used to run the algorithm in the output.",
                     "default": true
                 },
                 "alk.inputActive": {
@@ -78,22 +78,22 @@
                 },
                 "alk.inputMode": {
                     "enum": [
-                        "text",
-                        "file"
+                        "Text",
+                        "File"
                     ],
-                    "description": "The mode of input to be used.",
+                    "description": "The mode of input to be used. (Only if Input Active is checked)",
                     "default": "text",
                     "order": 2
                 },
                 "alk.inputPath": {
                     "type": "string",
-                    "description": "The path to the file to be used as input.",
+                    "description": "The path to the file to be used as input. (Only if Input Active is checked and Input Mode is File)",
                     "default": "",
                     "order": 4
                 },
                 "alk.inputText": {
                     "type": "object",
-                    "description": "The values to be used as input.",
+                    "description": "The values to be used as input. (Only if Input Active is checked and Input Mode is Text)",
                     "additionalProperties": {
                         "type": "string"
                     },
