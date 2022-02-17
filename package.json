@@ -62,7 +62,7 @@
                 },
                 "alk.metadata": {
                     "type": "boolean",
-                    "description": "This must be checked to show metadata (the final configuration) in the output.",
+                    "description": "This must be checked to show metadata (the final state) in the output.",
                     "default": true
                 },
                 "alk.showCommand": {
