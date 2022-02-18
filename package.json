@@ -70,30 +70,30 @@
                     "description": "This must be checked to show the command used to run the algorithm in the output.",
                     "default": true
                 },
-                "alk.inputActive": {
+                "alk.initialState ": {
                     "type": "boolean",
-                    "description": "This must be checked if the algorithm to be executed has an input state.",
+                    "description": "This must be checked if the algorithm to be executed has an initial state.",
                     "default": false,
                     "order": 1
                 },
-                "alk.inputMode": {
+                "alk.initialStateMode ": {
                     "enum": [
                         "Text",
                         "File"
                     ],
-                    "description": "The mode of input to be used. (Only if Input Active is checked)",
+                    "description": "The mode of input to be used for the initial state. (Only if Initial State is checked)",
                     "default": "Text",
                     "order": 2
                 },
-                "alk.inputPath": {
+                "alk.initialStateMode.filePath": {
                     "type": "string",
-                    "description": "The path to the file to be used as input. (Only if Input Active is checked and Input Mode is File)",
+                    "description": "The path to the file to be used as the initial state. (Only if Initial State is checked and Initial State Mode is File)",
                     "default": "",
                     "order": 4
                 },
-                "alk.inputText": {
+                "alk.initialStateMode.asText": {
                     "type": "object",
-                    "description": "The values to be used as input. (Only if Input Active is checked and Input Mode is Text)",
+                    "description": "The values to be used as the initial state. (Only if Initial State is checked and Initial State Mode is Text)",
                     "additionalProperties": {
                         "type": "string"
                     },

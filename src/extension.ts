@@ -144,7 +144,7 @@ let currentRunningProcess: ChildProcess | null = null;
 function getInputString()
 {
     let input = "";
-    const inputDict: Object | undefined = vscode.workspace.getConfiguration('alk').get('inputText');
+    const inputDict: Object | undefined = vscode.workspace.getConfiguration('alk.initialStateMode').get('asText');
     if (!inputDict)
     {
         console.log("Input object is undefinded");
@@ -172,10 +172,10 @@ function getOptionsString(exhaustive: boolean)
     {
         options += '-e ';
     }
-    if (vscode.workspace.getConfiguration('alk').get('inputActive'))
+    if (vscode.workspace.getConfiguration('alk').get('initialState '))
     {
         options += '-i ';
-        if (vscode.workspace.getConfiguration('alk').get('inputMode') === 'Text')
+        if (vscode.workspace.getConfiguration('alk').get('initialStateMode ') === 'Text')
         {
             options += '"';
             options += getInputString().split('\n').join(" ").split('"').join('\\"');
@@ -187,7 +187,7 @@ function getOptionsString(exhaustive: boolean)
             if (editor)
             {
                 const filePath = editor.document.uri.fsPath;
-                const fileName : string | undefined = vscode.workspace.getConfiguration('alk').get('inputPath');
+                const fileName : string | undefined = vscode.workspace.getConfiguration('alk.initialStateMode').get('filePath');
                 if (fileName)
                 {
                     const inputFilePath = path.join(path.dirname(filePath), fileName);
