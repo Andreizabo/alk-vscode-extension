@@ -68,3 +68,61 @@ Extension for the `Alk` programming language. Right now, the following features 
   ```
   alki -h
   ```
+<br><br>
+# How to use the Alk extension
+
+## Creating and running a simple program
+
+*  First, you must create a file with the `.alk` extension. You can do that directly from Visual Studio Code, or from Windows Explorer.
+<br><br>
+![img.0.1](media/pics/0.1.png)
+![img.0.2](media/pics/0.2.png)
+<br><br><br>
+*  After creating the file, you can start typing the code for your program in it. For this example we will use a simple "Hello world" printing program.
+<br><br>
+![img.1.1](media/pics/1.1.png)
+<br><br><br>
+*  Now you will need to save the file. To to this you can either press `Ctrl + S` or manually go to `File -> Save` in Visual Studio Code. <strong> Any modifications made to the file will not be taken into consideration when running the program if you don't save! </strong>
+<br><br>
+![img.1.2](media/pics/1.2.png)
+<br><br><br>
+*  This program doesn't need any input, so you will need to make sure that all kinds of input are disabled in the settings. You can open the settings by right-clicking anywhere in the editor and clicking `Alk -> Alk Settings`. 
+<br><br>
+![img.1.3](media/pics/1.3.png)
+<br><br><br>
+*  The settings for a program without input should look like this:
+<br><br>
+![img.1.4](media/pics/1.4.png)
+<br><br><br>
+*  Now that you made sure that the settings are ok, the settings tab may now be closed and you can now run the program by right-clicking anywhere in the editor and clicking `Alk -> Run Alk`, or by clicking the run button in the top-right corner of Visual Studio Code.
+<br><br>
+![img.1.5](media/pics/1.5.png)
+<br><br><br>
+
+## Running a program that takes input
+*  The first steps are similar to the previous example, but now a different program will be used. This program will print the sum of `a` and `b`, which will be provided from the input source. After configuring the input in the settings, running the program is the same as in the last example.
+<br><br>
+![img.2.1](media/pics/2.1.png)
+<br><br><br>
+*  Now you will need to go to settigs, and enable `Initial State`
+<br><br>
+![img.2.2](media/pics/2.2.png)
+<br><br><br>
+*  <em><strong>Using the input from the settings</strong></em><br>
+   You will need to select `Text` for `Initial State Mode`, and you can start adding assignments in the `Initial State Mode: As Text` setting.
+<br><br>
+![img.3.1](media/pics/3.1.png)
+<br><br><br>
+   To add a new assignment, you need to click on `Add Item`, and when you are done <strong> you need to click on `Ok` or press `Enter`</strong>.
+<br><br>
+![img.3.2](media/pics/3.2.png)
+<br><br><br>
+*  <em><strong>Using a file as input</strong></em><br>
+   First, you will need to create an input file. For this example a file named `input.in` will be used. To create it, follow the same steps for creating a file from the first example. Inside the file, you can write all the assignments you need. After writing them, <strong> don't forget to save the file! </strong>
+<br><br>
+![img.4.1](media/pics/4.1.png)
+<br><br><br>
+   Now you will need to select `File` for `Initial State Mode`, and input the name of the file in the `File Path` option.
+<br><br>
+![img.4.2](media/pics/4.2.png)
+<br><br><br>
