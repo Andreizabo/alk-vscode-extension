@@ -1,20 +1,10 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as os from 'os';
-// import { AlkViewProvider } from './alkViewProvider';
 import { ChildProcess } from 'child_process';
 import axios from 'axios';
 
 let errorExists = false;
-
-//  let errorDecoration = vscode.window.createTextEditorDecorationType({
-// 	backgroundColor: "#A1000066",
-// 	// border: '2px solid white',
-// 	after: {
-// 		contentText: "\tIon buleala!",
-// 		textDecoration: "underline"
-// 	}
-// });
 
 type ErrorDecoration = {
     decoration: vscode.TextEditorDecorationType;
@@ -136,6 +126,7 @@ function replacePath(path: string) {
     let separator = os.type() === 'Windows_NT' ? '\r\n' : '\n';
     let parts = path.split(separator).filter(p => p !== '');
     parts.shift();
+    parts.shift();
     return parts.join(separator);
 }
 
@@ -190,8 +181,13 @@ function getOptionsString(exhaustive: boolean)
                 const fileName : string | undefined = vscode.workspace.getConfiguration('alk.initialStateMode').get('filePath');
                 if (fileName)
                 {
-                    const inputFilePath = path.join(path.dirname(filePath), fileName);
-                    options += `"${inputFilePath}" `;
+                    if (path.isAbsolute(fileName)){
+                        options += `"${fileName}" `;
+                    }
+                    else {
+                        const inputFilePath = path.join(path.dirname(filePath), fileName);
+                        options += `"${inputFilePath}" `;
+                    }
                 }
                 else
                 {
@@ -231,64 +227,73 @@ function runAlkFile(context: vscode.ExtensionContext, alkOutput: vscode.OutputCh
         vscode.window.showErrorMessage('No active editor');
         return;
     }
+    
+    editor.document.save().then((saved) => {
+        if (saved) {
+            // Daca pe viitor vrem sa punem optiune de auto-save, tot codul in if-ul asta ar merge pus
+            // intr-o functie separata si apelat ori aici, or intr-un if(!opt.autosave)
+            const alkRunScript = os.type() === 'Windows_NT' ? 'alki.bat' : 'alki.sh';
+            const alkPath = path.join(context.extensionUri.fsPath, 'media', 'alk', alkRunScript);
+            if (!alkPath) {
+                vscode.window.showErrorMessage('No alk path configured');
+                return;
+            }
+            // if (!terminal)
+            // {
+            // 	terminal = vscode.window.createTerminal('Alk');
+            // }
+            const options = getOptionsString(exhaustive);
 
-    const alkRunScript = os.type() === 'Windows_NT' ? 'alki.bat' : 'alki.sh';
-    const alkPath = path.join(context.extensionUri.fsPath, 'media', 'alk', alkRunScript);
-    if (!alkPath) {
-        vscode.window.showErrorMessage('No alk path configured');
-        return;
-    }
-    // if (!terminal)
-    // {
-    // 	terminal = vscode.window.createTerminal('Alk');
-    // }
-    const options = getOptionsString(exhaustive);
+            const filePath = editor.document.uri.fsPath;
+            //terminal.show();
+            //terminal.sendText(`${alkPath} -a ${path} ${options}`);
+            const cp = require('child_process');
+            const command = (os.type() === 'Windows_NT' ? '' : '/bin/bash ') + `"${alkPath}" -a "${filePath}" ${options}`;
+            if (vscode.workspace.getConfiguration('alk').get('showCommand')) {
+                alkOutput.appendLine(command);
+            }
+            else {
+                alkOutput.appendLine(`Running ${filePath}`);
+            }
 
-    const filePath = editor.document.uri.fsPath;
-    //terminal.show();
-    //terminal.sendText(`${alkPath} -a ${path} ${options}`);
-    const cp = require('child_process');
-    const command = (os.type() === 'Windows_NT' ? '' : '/bin/bash ') + `"${alkPath}" -a "${filePath}" ${options}`;
-    if (vscode.workspace.getConfiguration('alk').get('showCommand')) {
-        alkOutput.appendLine(command);
-    }
-    else {
-        alkOutput.appendLine(`Running ${filePath}`);
-    }
+            vscode.commands.executeCommand('setContext', 'alk.canRun', false);
+            currentRunningProcess = cp.exec(command, { detached: true }, (err: any, stdout: any, stderr: any) => {
+                currentRunningProcess = null;
+                vscode.commands.executeCommand('setContext', 'alk.canRun', true);
+                if (err) {
+                    console.log(`err: ${err}`);
+                    return;
+                }
+                alkOutput.appendLine(os.type() === 'Windows_NT' ? replacePath(stdout) : stdout);
+                alkOutput.appendLine(stderr);
+                if (stdout || stderr) {
+                    handleErrors(stdout, stderr);
+                }
+                alkOutput.show(true);
 
-    vscode.commands.executeCommand('setContext', 'alk.canRun', false);
-    currentRunningProcess = cp.exec(command, { detached: true }, (err: any, stdout: any, stderr: any) => {
-        currentRunningProcess = null;
-        vscode.commands.executeCommand('setContext', 'alk.canRun', true);
-        if (err) {
-            console.log(`err: ${err}`);
+                vscode.workspace.onDidChangeTextDocument(_change => {
+                    if (_change.document === editor.document) {
+                        if (errorExists) {
+                            // vscode.window.activeTextEditor?.setDecorations(errorDecoration, []);
+                            for (let key in errorDecorations) {
+                                let value = errorDecorations[key];
+                                value['decoration'].dispose();
+                                value['errorMessages'] = [];
+                                delete errorDecorations[key];
+                            }
+                            console.log(_change);
+                            console.log("Cleared");
+                            errorExists = false;
+                        }
+                    }
+                });
+            });
+        }
+        else {
+            vscode.window.showErrorMessage('Failed to save document');
             return;
         }
-        alkOutput.appendLine(os.type() === 'Windows_NT' ? replacePath(stdout) : stdout);
-        alkOutput.appendLine(stderr);
-        if (stdout || stderr) {
-            handleErrors(stdout, stderr);
-        }
-        alkOutput.show(true);
-
-        vscode.workspace.onDidChangeTextDocument(_change => {
-            if (_change.document === editor.document) {
-                if (errorExists) {
-                    // vscode.window.activeTextEditor?.setDecorations(errorDecoration, []);
-                    for (let key in errorDecorations) {
-                        let value = errorDecorations[key];
-                        value['decoration'].dispose();
-                        value['errorMessages'] = [];
-                        delete errorDecorations[key];
-                    }
-                    console.log(_change);
-                    console.log("Cleared");
-                    errorExists = false;
-                }
-            }
-        });
     });
-
 }
 
 export function activate(context: vscode.ExtensionContext) {
