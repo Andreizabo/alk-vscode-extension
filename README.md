@@ -9,7 +9,7 @@ Extension for the `Alk` programming language. Right now, the following features 
 
 ## How to use:
   * In order to run an `Alk` file, you can press the run button in the top-right menu and choose the desired option (exhaustive or not).</br>
-  ![run](/media/pics/runalk-menu.png)ics/runalk-menu.png)ics/runalk-menu.png)
+  ![run](/media/pics/runalk-menu.png)
   </br></br></br>
   * You can also run an `Alk` file by right clicking on the active editor and using the `Alk` submenu.<br>
   ![run](/media/pics/runalk-click.png)
