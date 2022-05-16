@@ -5,7 +5,7 @@
 *  <strong>Statement</strong> = an instruction on which the execution can be stopped. (Assignments, loops, choose, continue, return, etc.).
 *  <strong>Debug step</strong> = a step to the next statement.
 *  <strong>Callstack</strong> = a data structure that stores all the function calls that are running at a specific moment.
-*  <strong>Brakpoint</strong> = an indicator which tells the debugger to stop the execution at a certain line.
+*  <strong>Breakpoint</strong> = an indicator which tells the debugger to stop the execution at a certain line.
 *  <strong>Nondeterministic statement</strong> = a statement which will produce a different result each time it is ran. Refers to either `choose` or `uniform`.
 *  <strong>Execution branch</strong> = one of the possible executions which are created when a nondeterministic statement is executed.
 *  <strong>Checkpoint</strong> = a point in the code execution timeline to which the user can later return to.
