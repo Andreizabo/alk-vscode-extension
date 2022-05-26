@@ -3,6 +3,8 @@ import * as path from 'path';
 import * as os from 'os';
 import { ChildProcess } from 'child_process';
 import axios from 'axios';
+import { InlineDebugAdapterFactory, AlkConfigurationProvider } from './alkDebug';
+import { getOptionsString, displayJavaHelp, javaInstalled } from './helpers';
 
 let errorExists = false;
 
@@ -85,43 +87,6 @@ function handleErrors(stdout: String, stderr: String) {
     }
 }
 
-function displayJavaHelp(alkOutput: vscode.OutputChannel) {
-    alkOutput.appendLine('Java is not installed. Please install Java and restart VS Code.');
-    if (os.type() === 'Windows_NT') {
-        alkOutput.appendLine('You can download Java from https://www.java.com/en/download/');
-        alkOutput.appendLine('After installing Java, you have to add it to the Path environment variable.');
-        alkOutput.appendLine('You can do it by searching for "Environment Variables" in the Start menu, then click Environment Variables in the window that opened.');
-        alkOutput.appendLine('In the System variables tab, search for the Path variable, click it, and then click on Edit.');
-        alkOutput.appendLine('Click on New, then add the path where you installed Java (the default one is C:\\Program Files\\Java\\<version>\\bin), then click OK.');
-    }
-    else if (os.type() === "Linux") {
-        alkOutput.appendLine('You can install Java from the command line by running the following command:');
-        alkOutput.appendLine('sudo apt-get install default-jre');
-    }
-    else {
-        alkOutput.appendLine('You can download Java from https://www.java.com/en/download/');
-    }
-    alkOutput.show(true);
-}
-
-function checkJavaInstalled(alkOutput: vscode.OutputChannel) {
-    const cp = require('child_process');
-    let ok1 = true, ok2 = true;
-    try {
-        cp.execSync('java --version');
-    }
-    catch (e) {
-        ok1 = false;
-    }
-    try {
-        cp.execSync('java -version');
-    }
-    catch (e) {
-        ok2 = false;
-    }
-    return ok1 || ok2;
-}
-
 function replacePath(path: string) {
     let separator = os.type() === 'Windows_NT' ? '\r\n' : '\n';
     let parts = path.split(separator).filter(p => p !== '');
@@ -131,77 +96,6 @@ function replacePath(path: string) {
 }
 
 let currentRunningProcess: ChildProcess | null = null;
-
-function getInputString()
-{
-    let input = "";
-    const inputDict: Object | undefined = vscode.workspace.getConfiguration('alk.initialStateMode').get('asText');
-    if (!inputDict)
-    {
-        console.log("Input object is undefinded");
-        return "";
-    }
-    for (const [key, value] of Object.entries(inputDict)) 
-    {
-        input += `${key} |-> ${value}\n`;
-    }
-    return input;
-}
-
-function getOptionsString(exhaustive: boolean)
-{
-    let options = '';
-    if (vscode.workspace.getConfiguration('alk').get('metadata'))
-    {
-        options += '-m ';
-    }
-    if (vscode.workspace.getConfiguration('alk').get('precision'))
-    {
-        options += `-p ${vscode.workspace.getConfiguration('alk').get('precision')} `;
-    }
-    if (exhaustive)
-    {
-        options += '-e ';
-    }
-    if (vscode.workspace.getConfiguration('alk').get('initialState '))
-    {
-        options += '-i ';
-        if (vscode.workspace.getConfiguration('alk').get('initialStateMode ') === 'Text')
-        {
-            options += '"';
-            options += getInputString().split('\n').join(" ").split('"').join('\\"');
-            options += '"';
-        }
-        else
-        {
-            const editor = vscode.window.activeTextEditor;
-            if (editor)
-            {
-                const filePath = editor.document.uri.fsPath;
-                const fileName : string | undefined = vscode.workspace.getConfiguration('alk.initialStateMode').get('filePath');
-                if (fileName)
-                {
-                    if (path.isAbsolute(fileName)){
-                        options += `"${fileName}" `;
-                    }
-                    else {
-                        const inputFilePath = path.join(path.dirname(filePath), fileName);
-                        options += `"${inputFilePath}" `;
-                    }
-                }
-                else
-                {
-                    console.log("Input file name is undefined");
-                }
-            }
-            else
-            {
-                vscode.window.showErrorMessage('No active editor');
-            }
-        }
-    }
-    return options;
-}
 
 function runAlkFile(context: vscode.ExtensionContext, alkOutput: vscode.OutputChannel, javaInstalled: boolean, exhaustive = false) {
     console.log('runAlkFile');
@@ -234,19 +128,10 @@ function runAlkFile(context: vscode.ExtensionContext, alkOutput: vscode.OutputCh
             // intr-o functie separata si apelat ori aici, or intr-un if(!opt.autosave)
             const alkRunScript = os.type() === 'Windows_NT' ? 'alki.bat' : 'alki.sh';
             const alkPath = path.join(context.extensionUri.fsPath, 'media', 'alk', alkRunScript);
-            if (!alkPath) {
-                vscode.window.showErrorMessage('No alk path configured');
-                return;
-            }
-            // if (!terminal)
-            // {
-            // 	terminal = vscode.window.createTerminal('Alk');
-            // }
+
             const options = getOptionsString(exhaustive);
 
             const filePath = editor.document.uri.fsPath;
-            //terminal.show();
-            //terminal.sendText(`${alkPath} -a ${path} ${options}`);
             const cp = require('child_process');
             const command = (os.type() === 'Windows_NT' ? '' : '/bin/bash ') + `"${alkPath}" -a "${filePath}" ${options}`;
             if (vscode.workspace.getConfiguration('alk').get('showCommand')) {
@@ -274,7 +159,6 @@ function runAlkFile(context: vscode.ExtensionContext, alkOutput: vscode.OutputCh
                 vscode.workspace.onDidChangeTextDocument(_change => {
                     if (_change.document === editor.document) {
                         if (errorExists) {
-                            // vscode.window.activeTextEditor?.setDecorations(errorDecoration, []);
                             for (let key in errorDecorations) {
                                 let value = errorDecorations[key];
                                 value['decoration'].dispose();
@@ -300,9 +184,7 @@ export function activate(context: vscode.ExtensionContext) {
     console.log('Extension active');
     vers(context);
     vscode.commands.executeCommand('setContext', 'alk.canRun', true);
-    //const alkProvider = new AlkViewProvider(context.extensionUri);
     const alkOutput = vscode.window.createOutputChannel("Alk Output");
-    const javaInstalled = checkJavaInstalled(alkOutput);
 
     let disposable = vscode.commands.registerCommand('alk.run', () => {
         runAlkFile(context, alkOutput, javaInstalled, false);
@@ -331,13 +213,24 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.executeCommand('workbench.action.openSettings', '@ext:AlkUaic.Alk');
     });
 
+    let getActiveFileDisposable = vscode.commands.registerCommand('alk.getActiveFile', () => {
+        const editor = vscode.window.activeTextEditor;
+        if (editor) {
+            return editor.document.uri.fsPath;
+        }
+        else {
+            vscode.window.showErrorMessage('No active editor');
+            return 'error';
+        }
+    });
+
     context.subscriptions.push(disposable);
     context.subscriptions.push(exhaustiveDisposable);
     context.subscriptions.push(stopDisposable);
     context.subscriptions.push(optionsDisposable);
-    //context.subscriptions.push(
-    //    vscode.window.registerWebviewViewProvider(AlkViewProvider.viewType, alkProvider)
-    //);
+    context.subscriptions.push(getActiveFileDisposable);
+    context.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('alk', new InlineDebugAdapterFactory(context)));
+	context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('alk', new AlkConfigurationProvider()));
 }
 
 async function vers(context: vscode.ExtensionContext) {
