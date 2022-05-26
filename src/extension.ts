@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { ChildProcess } from 'child_process';
 import axios from 'axios';
+import { readFileSync, writeFileSync } from 'fs';
 
 let errorExists = false;
 
@@ -596,33 +597,45 @@ vscode.languages.registerDocumentFormattingEditProvider('alk', {
             };
         }
         function spacing(line: string) {
-            for (var symbol of ['+', '-', '*', ':', '/', '=']) {
+            let doubleSpace = ['+', '-', '*', ':', '/', '=', '<', '>', "+=", "-=", '*=', "/=", "==", "<=", ">="]
+            let singleSpace = [';', ',', '.', "++", "--"]
+            for (var symbol of doubleSpace) {
                 let index = getPosition(line, symbol, 1);
                 let i = 1;
                 while (index != -1 && index < line.length) {
+                    if ((index > 0 && doubleSpace.includes(line.substring(index - 1, index + symbol.length))) || doubleSpace.includes(line.substring(index, index + 1 + symbol.length)) ||
+                    (index > 0 && singleSpace.includes(line.substring(index - 1, index + symbol.length))) || singleSpace.includes(line.substring(index, index + 1 + symbol.length))) {
+                        index = getPosition(line, symbol, ++i);
+                        continue;
+                    }
                     if (index > 0) {
-                        if (line[index - 1] != ' ' && line[index - 1] != symbol) {
+                        if (line[index - 1] != ' ') {
                             line = insertAt(line, ' ', index);
                             ++index;
                         }
                     }
-                    if (line[index + 1] != ' ' && line[index + 1] != symbol) {
-                        line = insertAt(line, ' ', index + 1);
+                    if (line[index + symbol.length] != ' ') {
+                        line = insertAt(line, ' ', index + symbol.length);
                     }
                     index = getPosition(line, symbol, ++i);
                 }
             }
-            for (var symbol of [';', ',', '.']) {
+            for (var symbol of singleSpace) {
                 let index = getPosition(line, symbol, 1);
                 let i = 1;
                 while (index != -1 && index < line.length) {
+                    if ((index > 0 && doubleSpace.includes(line.substring(index - 1, index + 1))) || doubleSpace.includes(line.substring(index, index + 2)) ||
+                    (index > 0 && singleSpace.includes(line.substring(index - 1, index + 1))) || singleSpace.includes(line.substring(index, index + 2))) {
+                        index = getPosition(line, symbol, ++i);
+                        continue;
+                    }
                     if (index > 0) {
                         if (line[index - 1] == ' ') {
                             line = deleteAt(line, index - 1);
                         }
                     }
-                    if (line[index + 1] != ' ' && line[index + 1] != '\n' && line[index + 1] != '\t') {
-                        line = insertAt(line, ' ', index + 1);
+                    if (line[index + symbol.length] != ' ' && line[index + symbol.length] != '\n' && line[index + symbol.length] != '\t') {
+                        line = insertAt(line, ' ', index + symbol.length);
                     }
                     index = getPosition(line, symbol, ++i);
                 }
@@ -654,6 +667,8 @@ vscode.languages.registerDocumentFormattingEditProvider('alk', {
         //     tabs = result["tabs"];
             operations.push(vscode.TextEdit.delete(document.lineAt(i).range));
         }
+
+        //writeFileSync(document.uri.fsPath, '', {flag: 'w'});
 
         let superLine = lineArr.join(" ");
         superLine = handleBlock(superLine, 0, 0, 0, 0, 0)["line"];
