@@ -455,6 +455,9 @@ vscode.languages.registerDocumentFormattingEditProvider('alk', {
             return tab;
         }
         function getPosition(string: string, subString: string, index: number) {
+            if (!string.includes(subString)) {
+                return -1;
+            }
             return string.split(subString, index).join(subString).length;
         }
         function countChar(string: string, chr: string) {
@@ -466,26 +469,29 @@ vscode.languages.registerDocumentFormattingEditProvider('alk', {
         function replaceAt(string: string, replace: string, index: number) {
             return string.substring(0, index) + replace + string.substring(index + replace.length);
         }
+        function deleteAt(string: string, index: number) {
+            return string.substring(0, index) + string.substring(index + 1);
+        }
         function conditional(string: string) {
             let stripped = removeAllSpaces(string);
             return stripped.startsWith("if") ||
-                    stripped.startsWith("while") ||
-                    stripped.startsWith("else") ||
-                    stripped.startsWith("for") ||
-                    stripped.startsWith("repeat") ||
-                    stripped.startsWith("foreach") ||
-                    stripped.startsWith("forall") ||
-                    stripped.startsWith("do");
+                stripped.startsWith("while") ||
+                stripped.startsWith("else") ||
+                stripped.startsWith("for") ||
+                stripped.startsWith("repeat") ||
+                stripped.startsWith("foreach") ||
+                stripped.startsWith("forall") ||
+                stripped.startsWith("do");
         }
         function conditionalWithPhar(string: string) {
             let stripped = removeAllSpaces(string);
             return stripped.startsWith("if") ||
-                    stripped.startsWith("while") ||
-                    stripped.startsWith("for") ||
-                    stripped.startsWith("foreach") ||
-                    stripped.startsWith("forall")
+                stripped.startsWith("while") ||
+                stripped.startsWith("for") ||
+                stripped.startsWith("foreach") ||
+                stripped.startsWith("forall")
         }
-        function handleBlock(line: string, tabs: number, handledConditional: number, preservedConditional: number, expPhar: number) {
+        function handleBlock(line: string, tabs: number, handledConditional: number, preservedConditional: number, expPhar: number, expFuncPhar: number) {
             let len = line.length;
             line = removeAllSpaces(line).replace('/\n/g', '').replace('/\t/g', '').replace('/\s/g', '');
             let i = 0;
@@ -494,7 +500,7 @@ vscode.languages.registerDocumentFormattingEditProvider('alk', {
             }
             let lastWasntInstr = true;
             while (i < len) {
-                if (expPhar == 0) {
+                if (expPhar == 0 && expFuncPhar == 0) {
                     if (line[i] == '{') {
                         lastWasntInstr = true;
                         if (handledConditional > 0) {
@@ -535,23 +541,41 @@ vscode.languages.registerDocumentFormattingEditProvider('alk', {
                                 ++handledConditional;
                             }
                         }
-                        else 
-                        {
+                        else {
                             if (handledConditional > 0) {
                                 --tabs;
                                 --handledConditional;
                             }
-                            i += line.substring(i).indexOf(';');
+                            if (removeAllSpaces(line.substring(i, line.substring(i).indexOf('('))).length == 0) {
+                                i += line.substring(i).indexOf('(');
+                                ++expFuncPhar;
+                            }
+                            else {
+                                i += line.substring(i).indexOf(';');
+                            }
                         }
                     }
                 }
-                else {
+                else if (expPhar == 0 && expFuncPhar > 0) {
                     if (line[i] == '(') {
-                        ++expPhar;
+                        ++expFuncPhar;
                         line = insertAt(line, '\n' + makeTabs(tabs), i);
                         ++tabs;
                         i += tabs;
                         len += tabs;
+                    }
+                    else if (line[i] == ')') {
+                        --expFuncPhar;
+                        if (i == 0) {
+                            line = insertAt(line, makeTabs(tabs), i);
+                            i += tabs;
+                            len += tabs;
+                        }
+                    }
+                }
+                else if (expPhar > 0 && expFuncPhar == 0) {
+                    if (line[i] == '(') {
+                        ++expPhar;
                     }
                     else if (line[i] == ')') {
                         --expPhar;
@@ -567,8 +591,43 @@ vscode.languages.registerDocumentFormattingEditProvider('alk', {
                 "tabs": tabs,
                 "handledConditional": handledConditional,
                 "preservedConditional": preservedConditional,
-                "expPhar": expPhar
+                "expPhar": expPhar,
+                "expFuncPhar": expFuncPhar
             };
+        }
+        function spacing(line: string) {
+            for (var symbol of ['+', '-', '*', ':', '/', '=']) {
+                let index = getPosition(line, symbol, 1);
+                let i = 1;
+                while (index != -1 && index < line.length) {
+                    if (index > 0) {
+                        if (line[index - 1] != ' ' && line[index - 1] != symbol) {
+                            line = insertAt(line, ' ', index);
+                            ++index;
+                        }
+                    }
+                    if (line[index + 1] != ' ' && line[index + 1] != symbol) {
+                        line = insertAt(line, ' ', index + 1);
+                    }
+                    index = getPosition(line, symbol, ++i);
+                }
+            }
+            for (var symbol of [';', ',', '.']) {
+                let index = getPosition(line, symbol, 1);
+                let i = 1;
+                while (index != -1 && index < line.length) {
+                    if (index > 0) {
+                        if (line[index - 1] == ' ') {
+                            line = deleteAt(line, index - 1);
+                        }
+                    }
+                    if (line[index + 1] != ' ' && line[index + 1] != '\n' && line[index + 1] != '\t') {
+                        line = insertAt(line, ' ', index + 1);
+                    }
+                    index = getPosition(line, symbol, ++i);
+                }
+            }
+            return line;
         }
 
         const linesNo = document.lineCount;
@@ -577,19 +636,29 @@ vscode.languages.registerDocumentFormattingEditProvider('alk', {
         let handledConditional = 0;
         let preservedConditional = 0;
         let expPhar = 0;
+        let expFuncPhar = 0;
+        let lineArr: string[] = [];
         for (let i = 0; i < linesNo; ++i) {
-            let thisLine = document.lineAt(i).text;
+            lineArr.push(document.lineAt(i).text);
+        //     let thisLine = document.lineAt(i).text;
 
-            let result = handleBlock(thisLine, tabs, handledConditional, preservedConditional, expPhar);
-            thisLine = result["line"];
-            handledConditional = result["handledConditional"];
-            preservedConditional = result["preservedConditional"];
-            expPhar = result["expPhar"];
+        //     let result = handleBlock(thisLine, tabs, handledConditional, preservedConditional, expPhar, expFuncPhar);
+        //     thisLine = result["line"];
+        //     handledConditional = result["handledConditional"];
+        //     preservedConditional = result["preservedConditional"];
+        //     expPhar = result["expPhar"];
+        //     expFuncPhar = result["expFuncPhar"];
 
-            operations.push(vscode.TextEdit.replace(document.lineAt(i).range, thisLine.replace('\n', '')));
-            
-            tabs = result["tabs"];
+        //     operations.push(vscode.TextEdit.replace(document.lineAt(i).range, thisLine.replace('\n', '')));
+
+        //     tabs = result["tabs"];
+            operations.push(vscode.TextEdit.delete(document.lineAt(i).range));
         }
+
+        let superLine = lineArr.join(" ");
+        superLine = handleBlock(superLine, 0, 0, 0, 0, 0)["line"];
+        superLine = spacing(superLine);
+        operations.push(vscode.TextEdit.insert(document.lineAt(0).range.start, superLine));
         return operations;
     }
 });
