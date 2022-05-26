@@ -132,56 +132,44 @@ function replacePath(path: string) {
 
 let currentRunningProcess: ChildProcess | null = null;
 
-function getInputString()
-{
+function getInputString() {
     let input = "";
     const inputDict: Object | undefined = vscode.workspace.getConfiguration('alk.initialStateMode').get('asText');
-    if (!inputDict)
-    {
+    if (!inputDict) {
         console.log("Input object is undefinded");
         return "";
     }
-    for (const [key, value] of Object.entries(inputDict)) 
-    {
+    for (const [key, value] of Object.entries(inputDict)) {
         input += `${key} |-> ${value}\n`;
     }
     return input;
 }
 
-function getOptionsString(exhaustive: boolean)
-{
+function getOptionsString(exhaustive: boolean) {
     let options = '';
-    if (vscode.workspace.getConfiguration('alk').get('metadata'))
-    {
+    if (vscode.workspace.getConfiguration('alk').get('metadata')) {
         options += '-m ';
     }
-    if (vscode.workspace.getConfiguration('alk').get('precision'))
-    {
+    if (vscode.workspace.getConfiguration('alk').get('precision')) {
         options += `-p ${vscode.workspace.getConfiguration('alk').get('precision')} `;
     }
-    if (exhaustive)
-    {
+    if (exhaustive) {
         options += '-e ';
     }
-    if (vscode.workspace.getConfiguration('alk').get('initialState '))
-    {
+    if (vscode.workspace.getConfiguration('alk').get('initialState ')) {
         options += '-i ';
-        if (vscode.workspace.getConfiguration('alk').get('initialStateMode ') === 'Text')
-        {
+        if (vscode.workspace.getConfiguration('alk').get('initialStateMode ') === 'Text') {
             options += '"';
             options += getInputString().split('\n').join(" ").split('"').join('\\"');
             options += '"';
         }
-        else
-        {
+        else {
             const editor = vscode.window.activeTextEditor;
-            if (editor)
-            {
+            if (editor) {
                 const filePath = editor.document.uri.fsPath;
-                const fileName : string | undefined = vscode.workspace.getConfiguration('alk.initialStateMode').get('filePath');
-                if (fileName)
-                {
-                    if (path.isAbsolute(fileName)){
+                const fileName: string | undefined = vscode.workspace.getConfiguration('alk.initialStateMode').get('filePath');
+                if (fileName) {
+                    if (path.isAbsolute(fileName)) {
                         options += `"${fileName}" `;
                     }
                     else {
@@ -189,13 +177,11 @@ function getOptionsString(exhaustive: boolean)
                         options += `"${inputFilePath}" `;
                     }
                 }
-                else
-                {
+                else {
                     console.log("Input file name is undefined");
                 }
             }
-            else
-            {
+            else {
                 vscode.window.showErrorMessage('No active editor');
             }
         }
@@ -227,7 +213,7 @@ function runAlkFile(context: vscode.ExtensionContext, alkOutput: vscode.OutputCh
         vscode.window.showErrorMessage('No active editor');
         return;
     }
-    
+
     editor.document.save().then((saved) => {
         if (saved) {
             // Daca pe viitor vrem sa punem optiune de auto-save, tot codul in if-ul asta ar merge pus
@@ -453,3 +439,157 @@ async function downloadAlk(version: string, alkPath: any) {
 }
 
 export function deactivate() { }
+
+
+
+vscode.languages.registerDocumentFormattingEditProvider('alk', {
+    provideDocumentFormattingEdits(document: vscode.TextDocument): vscode.TextEdit[] {
+        function removeAllSpaces(line: string) {
+            return line.trim().replace(/\s\s+/g, ' ');
+        }
+        function makeTabs(tabs: number) {
+            let tab = '';
+            for (let i = 0; i < tabs; ++i) {
+                tab += '\t';
+            }
+            return tab;
+        }
+        function getPosition(string: string, subString: string, index: number) {
+            return string.split(subString, index).join(subString).length;
+        }
+        function countChar(string: string, chr: string) {
+            return string.split(chr).length - 1;
+        }
+        function insertAt(string: string, inst: string, index: number) {
+            return string.substring(0, index) + inst + string.substring(index);
+        }
+        function replaceAt(string: string, replace: string, index: number) {
+            return string.substring(0, index) + replace + string.substring(index + replace.length);
+        }
+        function conditional(string: string) {
+            let stripped = removeAllSpaces(string);
+            return stripped.startsWith("if") ||
+                    stripped.startsWith("while") ||
+                    stripped.startsWith("else") ||
+                    stripped.startsWith("for") ||
+                    stripped.startsWith("repeat") ||
+                    stripped.startsWith("foreach") ||
+                    stripped.startsWith("forall") ||
+                    stripped.startsWith("do");
+        }
+        function conditionalWithPhar(string: string) {
+            let stripped = removeAllSpaces(string);
+            return stripped.startsWith("if") ||
+                    stripped.startsWith("while") ||
+                    stripped.startsWith("for") ||
+                    stripped.startsWith("foreach") ||
+                    stripped.startsWith("forall")
+        }
+        function handleBlock(line: string, tabs: number, handledConditional: number, preservedConditional: number, expPhar: number) {
+            let len = line.length;
+            line = removeAllSpaces(line).replace('/\n/g', '').replace('/\t/g', '').replace('/\s/g', '');
+            let i = 0;
+            if (line[i] == '{') {
+                i = 1;
+            }
+            let lastWasntInstr = true;
+            while (i < len) {
+                if (expPhar == 0) {
+                    if (line[i] == '{') {
+                        lastWasntInstr = true;
+                        if (handledConditional > 0) {
+                            preservedConditional = handledConditional - 1;
+                            handledConditional = 0;
+                            --tabs;
+                        }
+                        line = insertAt(line, '\n' + makeTabs(tabs), i);
+                        ++tabs;
+                        i += tabs;
+                        len += tabs;
+                    }
+                    else if (line[i] == '}') {
+                        lastWasntInstr = true;
+                        --tabs;
+                        line = insertAt(line, '\n' + makeTabs(tabs), i);
+                        i += tabs + 1;
+                        len += tabs + 1;
+                        handledConditional = preservedConditional;
+                    }
+                    else if (line[i] == ' ' || line[i] == '\t') {
+                        lastWasntInstr = true;
+                        line = replaceAt(line, '', i);
+                    }
+                    else if (lastWasntInstr) {
+                        lastWasntInstr = false;
+                        line = insertAt(line, '\n' + makeTabs(tabs), i);
+                        i += tabs + 1;
+                        len += tabs + 1;
+
+                        if (conditional(line.substring(i))) {
+                            ++tabs;
+                            if (conditionalWithPhar(line.substring(i))) {
+                                i += line.substring(i).indexOf('(');
+                                ++expPhar;
+                            }
+                            else {
+                                ++handledConditional;
+                            }
+                        }
+                        else 
+                        {
+                            if (handledConditional > 0) {
+                                --tabs;
+                                --handledConditional;
+                            }
+                            i += line.substring(i).indexOf(';');
+                        }
+                    }
+                }
+                else {
+                    if (line[i] == '(') {
+                        ++expPhar;
+                        line = insertAt(line, '\n' + makeTabs(tabs), i);
+                        ++tabs;
+                        i += tabs;
+                        len += tabs;
+                    }
+                    else if (line[i] == ')') {
+                        --expPhar;
+                        if (expPhar == 0) {
+                            ++handledConditional;
+                        }
+                    }
+                }
+                ++i;
+            }
+            return {
+                "line": line,
+                "tabs": tabs,
+                "handledConditional": handledConditional,
+                "preservedConditional": preservedConditional,
+                "expPhar": expPhar
+            };
+        }
+
+        const linesNo = document.lineCount;
+        let operations: vscode.TextEdit[] = [];
+        let tabs = 0;
+        let handledConditional = 0;
+        let preservedConditional = 0;
+        let expPhar = 0;
+        for (let i = 0; i < linesNo; ++i) {
+            let thisLine = document.lineAt(i).text;
+
+            let result = handleBlock(thisLine, tabs, handledConditional, preservedConditional, expPhar);
+            thisLine = result["line"];
+            handledConditional = result["handledConditional"];
+            preservedConditional = result["preservedConditional"];
+            expPhar = result["expPhar"];
+
+            operations.push(vscode.TextEdit.replace(document.lineAt(i).range, thisLine.replace('\n', '')));
+            
+            tabs = result["tabs"];
+        }
+        return operations;
+    }
+});
