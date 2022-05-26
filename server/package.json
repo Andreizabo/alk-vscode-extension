@@ -1,0 +1,19 @@
+{
+	"name": "AlkServer",
+    "displayName": "Alk Server",
+	"description": "",
+    "version": "1.0",
+	"publisher": "AlkUaic",
+	"repository": {
+        "type": "git",
+        "url": "https://github.com/Andreizabo/alk-vscode-extension.git"
+    },
+	"engines": {
+		"node": "*"
+	},
+    "dependencies": {
+		"vscode-languageserver": "^7.0.0",
+		"vscode-languageserver-textdocument": "^1.0.1",
+		"wait-for-event": "^2.0.1"
+    }
+}
