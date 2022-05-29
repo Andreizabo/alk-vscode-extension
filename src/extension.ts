@@ -121,7 +121,7 @@ function runAlkFile(context: vscode.ExtensionContext, alkOutput: vscode.OutputCh
         vscode.window.showErrorMessage('No active editor');
         return;
     }
-    
+
     editor.document.save().then((saved) => {
         if (saved) {
             // Daca pe viitor vrem sa punem optiune de auto-save, tot codul in if-ul asta ar merge pus
@@ -346,3 +346,226 @@ async function downloadAlk(version: string, alkPath: any) {
 }
 
 export function deactivate() { }
+
+
+
+vscode.languages.registerDocumentFormattingEditProvider('alk', {
+    provideDocumentFormattingEdits(document: vscode.TextDocument): vscode.TextEdit[] {
+        function removeAllSpaces(line: string) {
+            return line.trim().replace(/\s\s+/g, ' ');
+        }
+        function makeTabs(tabs: number) {
+            let tab = '';
+            for (let i = 0; i < tabs; ++i) {
+                tab += '\t';
+            }
+            return tab;
+        }
+        function getPosition(string: string, subString: string, index: number) {
+            if (!string.includes(subString)) {
+                return -1;
+            }
+            return string.split(subString, index).join(subString).length;
+        }
+        function countChar(string: string, chr: string) {
+            return string.split(chr).length - 1;
+        }
+        function insertAt(string: string, inst: string, index: number) {
+            return string.substring(0, index) + inst + string.substring(index);
+        }
+        function replaceAt(string: string, replace: string, index: number) {
+            return string.substring(0, index) + replace + string.substring(index + replace.length);
+        }
+        function deleteAt(string: string, index: number) {
+            return string.substring(0, index) + string.substring(index + 1);
+        }
+        function conditional(string: string) {
+            let stripped = removeAllSpaces(string);
+            return stripped.startsWith("if") ||
+                stripped.startsWith("while") ||
+                stripped.startsWith("else") ||
+                stripped.startsWith("for") ||
+                stripped.startsWith("repeat") ||
+                stripped.startsWith("foreach") ||
+                stripped.startsWith("forall") ||
+                stripped.startsWith("do");
+        }
+        function conditionalWithPhar(string: string) {
+            let stripped = removeAllSpaces(string);
+            return stripped.startsWith("if") ||
+                stripped.startsWith("while") ||
+                stripped.startsWith("for") ||
+                stripped.startsWith("foreach") ||
+                stripped.startsWith("forall");
+        }
+        function handleBlock(line: string, tabs: number, handledConditional: number, preservedConditional: number, expPhar: number, expFuncPhar: number) {
+            let len = line.length;
+            line = removeAllSpaces(line).replace('/\n/g', '').replace('/\t/g', '').replace('/\s/g', '');
+            let i = 0;
+            if (line[i] === '{') {
+                i = 1;
+            }
+            let lastWasntInstr = true;
+            while (i < len) {
+                if (expPhar === 0 && expFuncPhar === 0) {
+                    if (line[i] === '{') {
+                        lastWasntInstr = true;
+                        if (handledConditional > 0) {
+                            preservedConditional = handledConditional - 1;
+                            handledConditional = 0;
+                            --tabs;
+                        }
+                        line = insertAt(line, '\n' + makeTabs(tabs), i);
+                        ++tabs;
+                        i += tabs;
+                        len += tabs;
+                    }
+                    else if (line[i] === '}') {
+                        lastWasntInstr = true;
+                        --tabs;
+                        line = insertAt(line, '\n' + makeTabs(tabs), i);
+                        i += tabs + 1;
+                        len += tabs + 1;
+                        handledConditional = preservedConditional;
+                    }
+                    else if (line[i] === ' ' || line[i] === '\t') {
+                        lastWasntInstr = true;
+                        line = replaceAt(line, '', i);
+                    }
+                    else if (lastWasntInstr) {
+                        lastWasntInstr = false;
+                        line = insertAt(line, '\n' + makeTabs(tabs), i);
+                        i += tabs + 1;
+                        len += tabs + 1;
+
+                        if (conditional(line.substring(i))) {
+                            ++tabs;
+                            if (conditionalWithPhar(line.substring(i))) {
+                                i += line.substring(i).indexOf('(');
+                                ++expPhar;
+                            }
+                            else {
+                                ++handledConditional;
+                            }
+                        }
+                        else {
+                            if (handledConditional > 0) {
+                                --tabs;
+                                --handledConditional;
+                            }
+                            if (removeAllSpaces(line.substring(i, line.substring(i).indexOf('('))).length === 0) {
+                                i += line.substring(i).indexOf('(');
+                                ++expFuncPhar;
+                            }
+                            else {
+                                i += line.substring(i).indexOf(';');
+                            }
+                        }
+                    }
+                }
+                else if (expPhar === 0 && expFuncPhar > 0) {
+                    if (line[i] === '(') {
+                        ++expFuncPhar;
+                        line = insertAt(line, '\n' + makeTabs(tabs), i);
+                        ++tabs;
+                        i += tabs;
+                        len += tabs;
+                    }
+                    else if (line[i] === ')') {
+                        --expFuncPhar;
+                        if (i === 0) {
+                            line = insertAt(line, makeTabs(tabs), i);
+                            i += tabs;
+                            len += tabs;
+                        }
+                    }
+                }
+                else if (expPhar > 0 && expFuncPhar === 0) {
+                    if (line[i] === '(') {
+                        ++expPhar;
+                    }
+                    else if (line[i] === ')') {
+                        --expPhar;
+                        if (expPhar === 0) {
+                            ++handledConditional;
+                        }
+                    }
+                }
+                ++i;
+            }
+            return {
+                "line": line,
+                "tabs": tabs,
+                "handledConditional": handledConditional,
+                "preservedConditional": preservedConditional,
+                "expPhar": expPhar,
+                "expFuncPhar": expFuncPhar
+            };
+        }
+        function spacing(line: string) {
+            for (var symbol of ['+', '-', '*', ':', '/', '=']) {
+                let index = getPosition(line, symbol, 1);
+                let i = 1;
+                while (index !== -1 && index < line.length) {
+                    if (index > 0) {
+                        if (line[index - 1] !== ' ' && line[index - 1] !== symbol) {
+                            line = insertAt(line, ' ', index);
+                            ++index;
+                        }
+                    }
+                    if (line[index + 1] !== ' ' && line[index + 1] !== symbol) {
+                        line = insertAt(line, ' ', index + 1);
+                    }
+                    index = getPosition(line, symbol, ++i);
+                }
+            }
+            for (var symbol of [';', ',', '.']) {
+                let index = getPosition(line, symbol, 1);
+                let i = 1;
+                while (index !== -1 && index < line.length) {
+                    if (index > 0) {
+                        if (line[index - 1] === ' ') {
+                            line = deleteAt(line, index - 1);
+                        }
+                    }
+                    if (line[index + 1] !== ' ' && line[index + 1] !== '\n' && line[index + 1] !== '\t') {
+                        line = insertAt(line, ' ', index + 1);
+                    }
+                    index = getPosition(line, symbol, ++i);
+                }
+            }
+            return line;
+        }
+
+        const linesNo = document.lineCount;
+        let operations: vscode.TextEdit[] = [];
+        let tabs = 0;
+        let handledConditional = 0;
+        let preservedConditional = 0;
+        let expPhar = 0;
+        let expFuncPhar = 0;
+        let lineArr: string[] = [];
+        for (let i = 0; i < linesNo; ++i) {
+            lineArr.push(document.lineAt(i).text);
+        //     let thisLine = document.lineAt(i).text;
+
+        //     let result = handleBlock(thisLine, tabs, handledConditional, preservedConditional, expPhar, expFuncPhar);
+        //     thisLine = result["line"];
+        //     handledConditional = result["handledConditional"];
+        //     preservedConditional = result["preservedConditional"];
+        //     expPhar = result["expPhar"];
+        //     expFuncPhar = result["expFuncPhar"];
+
+        //     operations.push(vscode.TextEdit.replace(document.lineAt(i).range, thisLine.replace('\n', '')));
+
+        //     tabs = result["tabs"];
+            operations.push(vscode.TextEdit.delete(document.lineAt(i).range));
+        }
+
+        let superLine = lineArr.join(" ");
+        superLine = handleBlock(superLine, 0, 0, 0, 0, 0)["line"];
+        superLine = spacing(superLine);
+        operations.push(vscode.TextEdit.insert(document.lineAt(0).range.start, superLine));
+        return operations;
+    }
+});
