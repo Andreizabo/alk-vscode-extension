@@ -7,6 +7,15 @@ import { InlineDebugAdapterFactory, AlkConfigurationProvider } from './alkDebug'
 import { getOptionsString, displayJavaHelp, javaInstalled } from './helpers';
 import { readFileSync, writeFileSync } from 'fs';
 
+import {
+    LanguageClient,
+    LanguageClientOptions,
+    ServerOptions,
+    TransportKind
+} from 'vscode-languageclient/node';
+
+let client: LanguageClient;
+
 let errorExists = false;
 
 type ErrorDecoration = {
@@ -232,6 +241,34 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(getActiveFileDisposable);
     context.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('alk', new InlineDebugAdapterFactory(context)));
 	context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('alk', new AlkConfigurationProvider()));
+
+    let serverModule = context.asAbsolutePath(path.join('server', 'out', 'server.js'));
+    let debugOptions = { execArgv: ['--nolazy', '--inspect=6009'] };
+    let serverOptions: ServerOptions = {
+        run: { module: serverModule, transport: TransportKind.ipc },
+        debug: {
+            module: serverModule,
+            transport: TransportKind.ipc,
+            options: debugOptions
+        }
+    };
+    let clientOptions: LanguageClientOptions = {
+        // Register the server for plain text documents
+        documentSelector: [{ scheme: 'file', language: 'plaintext' }],
+        synchronize: {
+            // Notify the server about file changes to '.clientrc files contained in the workspace
+            fileEvents: vscode.workspace.createFileSystemWatcher('**/.clientrc')
+        }
+    };
+    client = new LanguageClient(
+        'AlkLangServ',
+        'Alk Language Server',
+        serverOptions,
+        clientOptions
+    );
+
+    client.start();
+    console.log("Started client");
 }
 
 async function vers(context: vscode.ExtensionContext) {
@@ -346,9 +383,12 @@ async function downloadAlk(version: string, alkPath: any) {
     });
 }
 
-export function deactivate() { }
-
-
+export function deactivate(): Thenable<void> | undefined {
+    if (!client) {
+        return undefined;
+    }
+    return client.stop();
+}
 
 vscode.languages.registerDocumentFormattingEditProvider('alk', {
     provideDocumentFormattingEdits(document: vscode.TextDocument): vscode.TextEdit[] {
