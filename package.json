@@ -22,7 +22,19 @@
         "onLanguage:alk",
         "onDebug"
     ],
-    "main": "./out/extension.js",
+    "configuration": {
+        "type": "object",
+        "title": "Server configuration",
+        "properties": {
+            "languageServerExample.maxNumberOfProblems": {
+                "scope": "resource",
+                "type": "number",
+                "default": 100,
+                "description": "Controls the maximum number of problems produced by the server."
+            }
+        }
+    },
+    "main": "./client/out/extension",
     "contributes": {
         "commands": [
             {
@@ -253,10 +265,11 @@
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",
-        "compile": "tsc -p ./",
-        "watch": "tsc -watch -p ./",
+        "compile": "tsc -b",
+        "watch": "tsc -b -w",
         "pretest": "npm run compile && npm run lint",
-        "lint": "eslint src --ext ts",
+        "lint": "eslint ./client/src ./server/src --ext .ts,.tsx",
+		"postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
         "test": "node ./out/test/runTest.js"
     },
     "devDependencies": {
@@ -273,14 +286,5 @@
         "glob": "^7.1.7",
         "mocha": "^9.1.1",
         "typescript": "^4.4.3"
-    },
-    "dependencies": {
-        "axios": "^0.24.0",
-        "del": "^6.0.0",
-        "download": "^8.0.0",
-        "mv": "^2.1.1",
-        "tree-kill": "^1.2.2",
-        "unzipper": "^0.10.11",
-        "vsce": "^2.6.3"
     }
 }
