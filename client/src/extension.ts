@@ -254,7 +254,7 @@ export function activate(context: vscode.ExtensionContext) {
     };
     let clientOptions: LanguageClientOptions = {
         // Register the server for plain text documents
-        documentSelector: [{ scheme: 'file', language: 'plaintext' }],
+        documentSelector: [{ scheme: 'file', language: 'alk' }],
         synchronize: {
             // Notify the server about file changes to '.clientrc files contained in the workspace
             fileEvents: vscode.workspace.createFileSystemWatcher('**/.clientrc')
