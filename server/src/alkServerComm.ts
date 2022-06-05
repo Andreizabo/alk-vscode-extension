@@ -4,7 +4,6 @@ import * as os from "os";
 export class AlkServerComm extends EventEmitter
 {
     private _childProcess: any;
-    private _mainFile: string = '';
     private _alkOutput: string = '';
     private _alkOutputLines: string[] = [];
     private _commandOutput = new Map<string, string[][]>();
@@ -14,20 +13,19 @@ export class AlkServerComm extends EventEmitter
         super();
     }
 
-    public async start(alkPath: string, mainFile: string): Promise<void>
+    public async start(alkPath: string): Promise<void>
     {
-        this._mainFile = mainFile;
-        let command = '', args = [];
+        let command = '', args: any = [];
         
         if (os.type() === 'Windows_NT')
         {
             command = alkPath;
-            args = ['-a', `"${mainFile}"`, '-d', '-dm', /*options*/];
+            args = [];
         }
         else
         {
             command = '/bin/bash';
-            args = [`"${alkPath}"`, '-a', `"${mainFile}"`, '-d'];
+            args = [`"${alkPath}"`];
         }
         const cp = require('child_process');
         this._childProcess = cp.spawn(command, args, {
@@ -39,7 +37,25 @@ export class AlkServerComm extends EventEmitter
                 this._alkOutput += c;
                 if (c === '\n')
                 {
-                    this._alkOutputLines.push(this._alkOutput.slice());
+                    if (this._alkOutput.includes('--- begin <'))
+                    {
+                        this._alkOutputLines = [];
+                    }
+                    else if (this._alkOutput.includes('--- end <'))
+                    {
+                        let index = this._alkOutput.indexOf('> ---');
+                        const command = this._alkOutput.substring(9, index);
+                        if (!this._commandOutput.has(command))
+                        {
+                            this._commandOutput.set(command, []);
+                        }
+                        this._commandOutput.get(command)?.push(this._alkOutputLines);
+                        this._alkOutputLines = [];
+                    }
+                    else
+                    {
+                        this._alkOutputLines.push(this._alkOutput.slice());
+                    }
                     this._alkOutput = '';
                 }
             }
@@ -62,7 +78,7 @@ export class AlkServerComm extends EventEmitter
         this._childProcess.kill();
     }
 
-    private async writeCommand(command: string): Promise<string[]>
+    public async writeCommand(command: string, args: string[] = []): Promise<string[]>
     {
         if (!this._childProcess)
         {
@@ -70,6 +86,9 @@ export class AlkServerComm extends EventEmitter
             return [];
         }
         this._childProcess.stdin.write(command);
+        for (let i = 0; i < args.length; ++i) {
+            this._childProcess.stdin.write(args[i]);
+        }
         const trimmedCommand = command.trim();
         await this.waitForCommand(trimmedCommand);
         console.log(`Command: ${command}`);
@@ -88,7 +107,7 @@ export class AlkServerComm extends EventEmitter
 		});
 	}
 
-    private async waitForCommand(command: string): Promise<void>
+    public async waitForCommand(command: string): Promise<void>
     {
         await new Promise<void>(async resolve => {
             (function wait(output: Map<string, string[][]>, command: string)

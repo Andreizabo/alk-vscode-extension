@@ -21,9 +21,17 @@ import {
 	TextDocument
 } from 'vscode-languageserver-textdocument';
 
-import { Socket } from 'net';
+import {
+    AlkServerComm
+} from './alkServerComm'
+import { exit } from 'process';
+import path = require('path');
+import { SignatureHelp } from 'vscode';
 
 const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_";
+const alphanum = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_1234567890";
+
+const serverComm = new AlkServerComm();
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -87,6 +95,7 @@ let hasDiagnosticRelatedInformationCapability = false;
 
 connection.onInitialize((params: InitializeParams) => {
     console.log("test");
+    serverComm.start(__dirname + "\\..\\..\\media\\alk\\alkls.bat");
 	const capabilities = params.capabilities;
 
 	// Does the client support the `workspace/configuration` request?
@@ -109,7 +118,11 @@ connection.onInitialize((params: InitializeParams) => {
 			// Tell the client that this server supports code completion.
 			completionProvider: {
 				resolveProvider: true
-			}
+			},
+            signatureHelpProvider: {
+                triggerCharacters: [ '(', ')', ',' ]
+            },
+            definitionProvider: true
 		}
 	};
 	if (hasWorkspaceFolderCapability) {
@@ -185,9 +198,22 @@ documents.onDidClose(e => {
 	documentSettings.delete(e.document.uri);
 });
 
+
+let cachedDoc : string = '';
+let cachedDocPath : string = '';
+
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
-documents.onDidChangeContent(change => {
+documents.onDidChangeContent(async change => {
+    let url = require('url');
+
+    cachedDoc = change.document.getText();
+    cachedDocPath = url.fileURLToPath(change.document.uri);
+
+    let args = cachedDoc.split('\n').map(x => x + '\n');
+    args.unshift(cachedDoc.split('\n').length + '\n');
+    var result = await serverComm.writeCommand('load ' + url.fileURLToPath(change.document.uri) + '\n', args);
+
 	//validateTextDocument(change.document);
     console.log('Hello');
 });
@@ -287,6 +313,269 @@ connection.onDidChangeWatchedFiles(_change => {
 // 		return item;
 // 	}
 // );
+
+
+
+
+
+
+// -----------
+// NEW STUFF
+// -----------
+
+// FUNCTION SIGNATURE HELP
+
+let last_function: any[] = [];
+
+connection.onSignatureHelp(async (signatureHelpParms): Promise<any>  => {
+    if (signatureHelpParms.context?.triggerCharacter === '(')
+    {
+        let pars = []
+        let func_sign = '';
+        // if (signatureHelpParms.context?.isRetrigger == true) {
+        //     const lf = last_function.reverse()[0];
+        //     func_sign = lf['name'];
+        //     pars = lf['pars'];
+        // }
+        //else {
+            const func_name = readWordBefore(readDocLine(signatureHelpParms.position.line), signatureHelpParms.position.character - 1);
+            const result = await serverComm.writeCommand('function ' + func_name + '\n');
+            func_sign = result[0].replace('\r', '').replace('\n', '').replace('\c', '')
+
+            pars = [];
+            const unparsed = func_sign.split('(')[1].replace(')', '').replace(' ', '').replace('\t', '').split(',');
+            for (let i = 0; i < unparsed.length; ++i) {
+                pars.push({
+                    label: unparsed[i]
+                })
+            }
+
+            last_function.push({
+                'name': func_sign,
+                'argn': 0,
+                'pars': pars
+            });
+        //}
+        return {
+            signatures: [
+                {
+                    label: func_sign, 
+                    parameters: pars,
+                    activeParameter: 0
+                }
+            ]
+        }
+    }
+    else if (signatureHelpParms.context?.triggerCharacter === ',') {
+        if (last_function.length == 0) {
+            return null;
+        }
+        const lf = last_function.reverse()[0];
+        const newarg = Math.min(lf['argn'] + 1, lf['pars'].length - 1);
+
+        last_function[last_function.length - 1]['argn'] = newarg;
+
+        return {
+            signatures: [
+                {
+                    label: lf['name'], 
+                    parameters: lf['pars'],
+                    activeParameter: newarg
+                }
+            ]
+        }
+    }
+    else if (signatureHelpParms.context?.triggerCharacter === ')') {
+        if (last_function.length == 0) {
+            return null;
+        }
+        last_function.pop();
+        if (last_function.length == 0) {
+            return null;
+        }
+        const lf = last_function.reverse()[0];
+        return {
+            signatures: [
+                {
+                    label: lf['name'], 
+                    parameters: lf['pars'],
+                    activeParameter: lf['argn']
+                }
+            ]
+        }
+    }
+    else {
+        const lf =  last_function.reverse()[0];
+
+        const line = readDocLine(signatureHelpParms.position.line);
+
+        if (line[signatureHelpParms.position.character - 1] == ')') {
+            if (last_function.length == 0) {
+                return null;
+            }
+            last_function.pop();
+            if (last_function.length == 0) {
+                return null;
+            }
+            const lf = last_function.reverse()[0];
+            return {
+                signatures: [
+                    {
+                        label: lf['name'], 
+                        parameters: lf['pars'],
+                        activeParameter: lf['argn']
+                    }
+                ]
+            }
+        }
+        else {
+            var noCommas = 0;
+            var noPars = 0;
+
+            for (let i = signatureHelpParms.position.character - 1; i >= 0; --i) {
+                if (line[i] == '(') {
+                    if (noPars == 0) {
+                        break;
+                    }
+                    else {
+                        --noPars;
+                    }
+                }
+                if (line[i] == ')') {
+                    ++noPars;
+                }
+                if (noPars == 0 && line[i] == ',') {
+                    ++noCommas;
+                }
+            }
+
+            const newarg = Math.min(noCommas, lf['pars'].length - 1);
+            last_function[last_function.length - 1]['argn'] = newarg;
+
+            return {
+                signatures: [
+                    {
+                        label: lf['name'], 
+                        parameters: lf['pars'],
+                        activeParameter: newarg
+                    }
+                ]
+            }
+        }
+    }
+})
+
+function readWordBefore(line: string, position: number, include = false) {
+    if (!include) {
+        --position;
+    }
+    if (position < 0) {
+        return '';
+    }
+    var composeWord = '';
+    for (let i = position; i >= 0; --i) {
+        if (!alphanum.includes(line[i])) {
+            break;
+        }
+        composeWord += line[i];
+    }
+    return [...composeWord].reverse().join("");
+}
+
+function readWordAfter(line: string, position: number, include = false) {
+    if (!include) {
+        ++position;
+    }
+    if (position > line.length - 1) {
+        return '';
+    }
+    var composeWord = '';
+    for (let i = position; i < line.length; ++i) {
+        if (!alphanum.includes(line[i])) {
+            break;
+        }
+        composeWord += line[i];
+    }
+    return composeWord;
+}
+
+function readWord(line: string, position: number) {
+    return readWordBefore(line, position, true) + readWordAfter(line, position);
+}
+
+function readDocLine(line: number) {
+    const txt : string = cachedDoc;
+    return txt.replaceAll('\r', '').split('\n')[line];
+}
+
+// -----------------------------------------------------------------------------------------
+
+// SHOW DEFINITION OF SYMBOL
+
+// AICI VSCODE NE DA POSITION.CHARACTER CA 0 IN LOC DE 1 :)
+connection.onDefinition(async (definitionParams): Promise<any> => {
+    const docLine = readDocLine(definitionParams.position.line);
+
+    if (!letters.includes(docLine[definitionParams.position.character])) {
+        if (definitionParams.position.character > 0 && !letters.includes(docLine[definitionParams.position.character - 1])) {
+            return null;
+        }
+        else {
+            --definitionParams.position.character;
+        }
+    }
+
+    const varname = readWord(docLine, definitionParams.position.character - 1);
+
+    let isFunc = false;
+    
+    for (let i = definitionParams.position.character + varname.length; i < docLine.length; ++i) {
+        if (docLine[i] == ' ' || docLine[i] == '\t') {
+            continue;
+        }
+        if (docLine[i] == '(') {
+            isFunc = true;
+        }
+        else {
+            break;
+        }
+    }
+
+    let result = [];
+
+    if (isFunc) {
+        result = await serverComm.writeCommand('where-f ' + varname + '\n');
+    }
+    else {
+        result = await serverComm.writeCommand('where-v ' + definitionParams.position.line + varname + '\n');
+    }
+
+    return {
+        uri: definitionParams.textDocument.uri,
+        range: {
+            start: {
+                line: parseInt(result[0]) - 1,
+                character: 0
+            },
+            end: {
+                line: parseInt(result[0]) - 1,
+                character: getNameOfDefinition(parseInt(result[0]) - 1).length
+            }
+        }
+    }
+})
+
+function getNameOfDefinition(line: number) {
+    const docLine = cachedDoc.replaceAll('\r', '').split('\n')[line].trim();
+    let str = '';
+    for (let i = 0; i < docLine.length; ++i) {
+        if (!alphanum.includes(docLine[i])) {
+            return str;
+        }
+        str += docLine[i];
+    }
+    return str;
+}
 
 // Make the text document manager listen on the connection
 // for open, change and close text document events
