@@ -612,9 +612,12 @@ vscode.languages.registerDocumentFormattingEditProvider('alk', {
         //     operations.push(vscode.TextEdit.replace(document.lineAt(i).range, thisLine.replace('\n', '')));
 
         //     tabs = result["tabs"];
-            operations.push(vscode.TextEdit.delete(document.lineAt(i).range));
+        //    operations.push(vscode.TextEdit.delete(document.lineAt(i).range));
         }
-
+        operations.push({
+            newText: '',
+            range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(linesNo + 1, 0))
+        })
         //writeFileSync(document.uri.fsPath, '', {flag: 'w'});
 
         let superLine = lineArr.join(" ");

@@ -122,7 +122,9 @@ connection.onInitialize((params: InitializeParams) => {
             signatureHelpProvider: {
                 triggerCharacters: [ '(', ')', ',' ]
             },
-            definitionProvider: true
+            definitionProvider: true,
+            hoverProvider: true,
+            referencesProvider: true
 		}
 	};
 	if (hasWorkspaceFolderCapability) {
@@ -208,12 +210,14 @@ documents.onDidChangeContent(async change => {
     let url = require('url');
 
     cachedDoc = change.document.getText();
-    cachedDocPath = url.fileURLToPath(change.document.uri);
 
-    let args = cachedDoc.split('\n').map(x => x + '\n');
-    args.unshift(cachedDoc.split('\n').length + '\n');
-    var result = await serverComm.writeCommand('load ' + url.fileURLToPath(change.document.uri) + '\n', args);
+    if (cachedDoc.trim().length > 0) {
+        cachedDocPath = url.fileURLToPath(change.document.uri);
 
+        let args = cachedDoc.split('\n').map(x => x + '\n');
+        args.unshift(cachedDoc.split('\n').length + '\n');
+        var result = await serverComm.writeCommand('load ' + url.fileURLToPath(change.document.uri) + '\n', args);
+    }
 	//validateTextDocument(change.document);
     console.log('Hello');
 });
@@ -257,64 +261,52 @@ connection.onDidChangeWatchedFiles(_change => {
 });
 
 // This handler provides the initial list of the completion items.
-// connection.onCompletion(
-// 	async (_textDocumentPosition: TextDocumentPositionParams): Promise<CompletionItem[]> => {
-// 		// The pass parameter contains the position of the text document in
-// 		// which code complete got requested. For the example we ignore this
-// 		// info and always provide the same completion items.
+connection.onCompletion(async (completionParams): Promise<CompletionItem[]> => {
+		const result = await serverComm.writeCommand('all-symbols ' + (completionParams.position.line + 1) + "\n");
 
-// 		let result: String = await communicateWithServer('getVars', (_textDocumentPosition.position.line+1) + " " + makeText(documents.get(_textDocumentPosition.textDocument.uri)?.getText() || ":(") + "\n");
-// 		console.log("VARS-START");
-// 		console.log((_textDocumentPosition.position.line+1));
-// 		console.log(result);
-// 		console.log("VARS-END");
-// 		let vars = result.split('\n');
-// 		vars.shift();
-// 		vars.pop();		
-// 		let autoc = [
-// 			{
-// 				label: 'var',
-// 				kind: CompletionItemKind.Text,
-// 				data: 1
-// 			},
-// 			{
-// 				label: 'autocomplete_test',
-// 				kind: CompletionItemKind.Text,
-// 				data: 2
-// 			}
-// 		];
+        result.shift();
 
-// 		for(let i = 0; i < vars.length; ++i) {
-// 			autoc.push({
-// 				label: vars[i].replace('\n', '').replace('\r', ''),
-// 				kind: CompletionItemKind.Text,
-// 				data: i + 3
-// 			});
-// 		}
+		const autoc = [];
 
-// 		console.log(autoc);
-		
+		for(let i = 0; i < result.length; ++i) {
+            const varname = result[i].replace('\n', '').replace('\r', '');
+            const res = await serverComm.writeCommand('function ' + varname + '\n');
 
-// 		return autoc;
-// 	}
-// );
+            if (!res[0].startsWith('No function')) {
+                autoc.push({
+                    label: varname,
+                    kind: CompletionItemKind.Function,
+                    data: i + 2
+                });
+            }
+			else {
+                autoc.push({
+                    label: varname,
+                    kind: CompletionItemKind.Variable,
+                    data: i + 2
+                });
+            }
+		}
 
-// // This handler resolves additional information for the item selected in
-// // the completion list.
-// connection.onCompletionResolve(
-// 	(item: CompletionItem): CompletionItem => {
-// 		if (item.data === 1) {
-// 			item.detail = 'var details';
-// 			item.documentation = 'Use \'var\' when declaring a new variable';
-// 		} else if (item.data === 2) {
-// 			item.detail = 'autocomplete_test title';
-// 			item.documentation = 'autocomplete_test description';
-// 		}
-// 		return item;
-// 	}
-// );
+		return autoc;
+	}
+);
 
+// This handler resolves additional information for the item selected in
+// the completion list.
+connection.onCompletionResolve(async (item: CompletionItem): Promise<CompletionItem> => {
+		const varname = item.label;
 
+        const result = await serverComm.writeCommand('function ' + varname + '\n');
+        const func_sign = result[0].replace('\r', '').replace('\n', '');
+
+        if (!result[0].startsWith('No function')) {
+            item.detail = func_sign;
+        }
+
+		return item;
+	}
+);
 
 
 
@@ -333,14 +325,14 @@ connection.onSignatureHelp(async (signatureHelpParms): Promise<any>  => {
         let pars = []
         let func_sign = '';
         // if (signatureHelpParms.context?.isRetrigger == true) {
-        //     const lf = last_function.reverse()[0];
+        //     const lf = last_function[last_function.length-1];
         //     func_sign = lf['name'];
         //     pars = lf['pars'];
         // }
         //else {
             const func_name = readWordBefore(readDocLine(signatureHelpParms.position.line), signatureHelpParms.position.character - 1);
             const result = await serverComm.writeCommand('function ' + func_name + '\n');
-            func_sign = result[0].replace('\r', '').replace('\n', '').replace('\c', '')
+            func_sign = result[0].replace('\r', '').replace('\n', '')
 
             pars = [];
             const unparsed = func_sign.split('(')[1].replace(')', '').replace(' ', '').replace('\t', '').split(',');
@@ -370,7 +362,7 @@ connection.onSignatureHelp(async (signatureHelpParms): Promise<any>  => {
         if (last_function.length == 0) {
             return null;
         }
-        const lf = last_function.reverse()[0];
+        const lf = last_function[last_function.length-1];
         const newarg = Math.min(lf['argn'] + 1, lf['pars'].length - 1);
 
         last_function[last_function.length - 1]['argn'] = newarg;
@@ -393,7 +385,7 @@ connection.onSignatureHelp(async (signatureHelpParms): Promise<any>  => {
         if (last_function.length == 0) {
             return null;
         }
-        const lf = last_function.reverse()[0];
+        const lf = last_function[last_function.length-1];
         return {
             signatures: [
                 {
@@ -405,7 +397,7 @@ connection.onSignatureHelp(async (signatureHelpParms): Promise<any>  => {
         }
     }
     else {
-        const lf =  last_function.reverse()[0];
+        const lf =  last_function[last_function.length-1];
 
         const line = readDocLine(signatureHelpParms.position.line);
 
@@ -417,7 +409,7 @@ connection.onSignatureHelp(async (signatureHelpParms): Promise<any>  => {
             if (last_function.length == 0) {
                 return null;
             }
-            const lf = last_function.reverse()[0];
+            const lf = last_function[last_function.length-1];
             return {
                 signatures: [
                     {
@@ -463,7 +455,7 @@ connection.onSignatureHelp(async (signatureHelpParms): Promise<any>  => {
             }
         }
     }
-})
+});
 
 function readWordBefore(line: string, position: number, include = false) {
     if (!include) {
@@ -563,7 +555,7 @@ connection.onDefinition(async (definitionParams): Promise<any> => {
             }
         }
     }
-})
+});
 
 function getNameOfDefinition(line: number) {
     const docLine = cachedDoc.replaceAll('\r', '').split('\n')[line].trim();
@@ -576,6 +568,114 @@ function getNameOfDefinition(line: number) {
     }
     return str;
 }
+
+// -----------------------------------------------------------------------------------------
+
+// HOVER
+
+connection.onHover(async (hoverParams): Promise<any> => {
+    const docLine = readDocLine(hoverParams.position.line);
+
+    if (!letters.includes(docLine[hoverParams.position.character])) {
+        if (hoverParams.position.character > 0 && !letters.includes(docLine[hoverParams.position.character - 1])) {
+            return null;
+        }
+        else {
+            --hoverParams.position.character;
+        }
+    }
+
+    const varname = readWord(docLine, hoverParams.position.character - 1);
+
+    let isFunc = false;
+    
+    for (let i = hoverParams.position.character + varname.length; i < docLine.length; ++i) {
+        if (docLine[i] == ' ' || docLine[i] == '\t') {
+            continue;
+        }
+        if (docLine[i] == '(') {
+            isFunc = true;
+        }
+        else {
+            break;
+        }
+    }
+
+    if (isFunc) {
+        const result = await serverComm.writeCommand('function ' + varname + '\n');
+        const func_sign = result[0].replace('\r', '').replace('\n', '')
+
+        return {
+            contents: {
+                language: "java",
+                value: func_sign
+            }
+        }
+    }
+    else {
+        return null;
+    }
+});
+
+// -----------------------------------------------------------------------------------------
+
+// FIND ALL REFERENCES
+
+connection.onReferences(async (referenceParams): Promise<any> => {
+    const docLine = readDocLine(referenceParams.position.line);
+
+    if (!letters.includes(docLine[referenceParams.position.character])) {
+        if (referenceParams.position.character > 0 && !letters.includes(docLine[referenceParams.position.character - 1])) {
+            return null;
+        }
+        else {
+            --referenceParams.position.character;
+        }
+    }
+
+    const varname = readWord(docLine, referenceParams.position.character - 1);
+
+    let isFunc = false;
+    
+    for (let i = referenceParams.position.character + varname.length; i < docLine.length; ++i) {
+        if (docLine[i] == ' ' || docLine[i] == '\t') {
+            continue;
+        }
+        if (docLine[i] == '(') {
+            isFunc = true;
+        }
+        else {
+            break;
+        }
+    }
+
+    const result = await serverComm.writeCommand('all-references ' + (referenceParams.position.line + 1) + ' ' + varname + (isFunc ? ' 1' : '') + '\n');
+
+    result.shift();
+
+    const ret = []
+
+    for (let i = 0; i < result.length; ++i) {
+        const line = result[i].split(' ');
+        ret.push({
+            uri: referenceParams.textDocument.uri,
+            range: {
+                start: {
+                    line: parseInt(line[0]) - 1,
+                    character: parseInt(line[1])
+                },
+                end: {
+                    line: parseInt(line[0]) - 1,
+                    character: parseInt(line[1]) + varname.length
+                }
+            }
+        });
+    }
+
+    return ret;
+});
+
+// -----------------------------------------------------------------------------------------
 
 // Make the text document manager listen on the connection
 // for open, change and close text document events
