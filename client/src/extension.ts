@@ -13,6 +13,7 @@ import {
     ServerOptions,
     TransportKind
 } from 'vscode-languageclient/node';
+import { isFunction } from 'util';
 
 let client: LanguageClient;
 
@@ -439,6 +440,17 @@ vscode.languages.registerDocumentFormattingEditProvider('alk', {
                 stripped.startsWith("foreach") ||
                 stripped.startsWith("forall");
         }
+        function isFunction(line: string, index: number) {
+            for (let i = index; i < line.length; ++i) {
+                if (line[i] == ' ' || line[i] == '\t') {
+                    return false;
+                }
+                if (line[i] == '(') {
+                    return true;
+                }
+            }
+            return false;
+        }
         function handleBlock(line: string, tabs: number, handledConditional: number, preservedConditional: number, expPhar: number, expFuncPhar: number) {
             let len = line.length;
             line = removeAllSpaces(line).replace('/\n/g', '').replace('/\t/g', '').replace('/\s/g', '');
@@ -494,7 +506,7 @@ vscode.languages.registerDocumentFormattingEditProvider('alk', {
                                 --tabs;
                                 --handledConditional;
                             }
-                            if (removeAllSpaces(line.substring(i, i + line.substring(i + 1).indexOf('('))).length === 0) {
+                            if (isFunction(line, i)) {
                                 i += line.substring(i).indexOf('(');
                                 ++expFuncPhar;
                             }
@@ -507,10 +519,10 @@ vscode.languages.registerDocumentFormattingEditProvider('alk', {
                 else if (expPhar === 0 && expFuncPhar > 0) {
                     if (line[i] === '(') {
                         ++expFuncPhar;
-                        line = insertAt(line, '\n' + makeTabs(tabs), i);
-                        ++tabs;
-                        i += tabs;
-                        len += tabs;
+                        // line = insertAt(line, '\n' + makeTabs(tabs), i);
+                        // ++tabs;
+                        // i += tabs;
+                        // len += tabs;
                     }
                     else if (line[i] === ')') {
                         --expFuncPhar;
