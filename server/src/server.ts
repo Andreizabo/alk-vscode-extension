@@ -455,7 +455,7 @@ connection.onDefinition(async (definitionParams): Promise<any> => {
 
     let isFunc = false;
     
-    for (let i = definitionParams.position.character + varname.length; i < docLine.length; ++i) {
+    for (let i = definitionParams.position.character + readWordAfter(docLine, definitionParams.position.character-1).length; i < docLine.length; ++i) {
         if (docLine[i] == ' ' || docLine[i] == '\t') {
             continue;
         }
