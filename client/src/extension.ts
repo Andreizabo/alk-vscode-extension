@@ -494,7 +494,7 @@ vscode.languages.registerDocumentFormattingEditProvider('alk', {
                                 --tabs;
                                 --handledConditional;
                             }
-                            if (removeAllSpaces(line.substring(i, line.substring(i).indexOf('('))).length === 0) {
+                            if (removeAllSpaces(line.substring(i, i + line.substring(i + 1).indexOf('('))).length === 0) {
                                 i += line.substring(i).indexOf('(');
                                 ++expFuncPhar;
                             }

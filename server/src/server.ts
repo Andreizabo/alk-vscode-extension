@@ -120,7 +120,7 @@ connection.onInitialize((params: InitializeParams) => {
 				resolveProvider: true
 			},
             signatureHelpProvider: {
-                triggerCharacters: [ '(', ')', ',' ]
+                triggerCharacters: [ '(', ')', ',',  ]
             },
             definitionProvider: true,
             hoverProvider: true,
@@ -217,43 +217,49 @@ documents.onDidChangeContent(async change => {
         let args = cachedDoc.split('\n').map(x => x + '\n');
         args.unshift(cachedDoc.split('\n').length + '\n');
         var result = await serverComm.writeCommand('load ' + url.fileURLToPath(change.document.uri) + '\n', args);
+        validateTextDocument(result, change.document);
     }
-	//validateTextDocument(change.document);
     console.log('Hello');
 });
 
-// async function validateTextDocument(textDocument: TextDocument): Promise<void> {
-// 	// In this simple example we get the settings for every validate run.
-// 	const settings = await getDocumentSettings(textDocument.uri);
+async function validateTextDocument(errrs: string[], textDocument: TextDocument): Promise<void> {
+	// In this simple example we get the settings for every validate run.
+	//const settings = await getDocumentSettings(textDocument.uri);
 
-// 	let problems = 0;
-// 	const diagnostics: Diagnostic[] = [];	
-// 	let result: String = await communicateWithServer('compile', makeText(textDocument.getText()) + "\n");
-// 	console.log("COMPILE-START");
-// 	console.log(result);
-// 	console.log("COMPILE-END");
+	let problems = 0;
+	const diagnostics: Diagnostic[] = [];	
 	
-// 	let warns = result.split('\n');
-// 	warns.shift();
-// 	warns.pop();	
+	errrs.pop();	
 
-// 	for(let i = 0; i < warns.length && problems < settings.maxNumberOfProblems; ++i) {
-// 		++problems;
-// 		let res_coords = warns[i].split(' ')[1].split(':')
-// 		let coords = getCoords(textDocument.getText(), parseInt(res_coords[0]), parseInt(res_coords[1]));
-// 		const diagnostic: Diagnostic = {
-// 			severity: DiagnosticSeverity.Error,
-// 			range: {
-// 				start: textDocument.positionAt(coords[0]),
-// 				end: textDocument.positionAt(coords[1])
-// 			},
-// 			message: warns[i],
-// 			source: 'ex'
-// 		};
-// 		diagnostics.push(diagnostic);
-// 	}
-// 	connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
-// }
+	for(let i = 0; i < errrs.length && problems < 2000; ++i) {
+        if (!errrs[i].includes(':') || !errrs[i].includes(' ')) {
+            continue;
+        }
+		++problems;
+		const line = parseInt(errrs[i].split(':')[0].trim());
+        const afterPt = errrs[i].split(':')[1].trim().split(' ');
+        const chr = parseInt(afterPt[0].trim());
+        afterPt.shift();
+        const msg = afterPt.join(' ').trim();
+		const diagnostic: Diagnostic = {
+			severity: DiagnosticSeverity.Error,
+			range: {
+				start: {
+                    line: line - 1,
+                    character: 0
+                },
+				end: {
+                    line: line - 1,
+                    character: 0
+                }
+			},
+			message: errrs[i],
+			source: 'ex'
+		};
+		diagnostics.push(diagnostic);
+	}
+	connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
+}
 
 connection.onDidChangeWatchedFiles(_change => {
 	// Monitored files have change in VSCode
@@ -320,140 +326,64 @@ connection.onCompletionResolve(async (item: CompletionItem): Promise<CompletionI
 let last_function: any[] = [];
 
 connection.onSignatureHelp(async (signatureHelpParms): Promise<any>  => {
-    if (signatureHelpParms.context?.triggerCharacter === '(')
-    {
-        let pars = []
-        let func_sign = '';
-        // if (signatureHelpParms.context?.isRetrigger == true) {
-        //     const lf = last_function[last_function.length-1];
-        //     func_sign = lf['name'];
-        //     pars = lf['pars'];
-        // }
-        //else {
-            const func_name = readWordBefore(readDocLine(signatureHelpParms.position.line), signatureHelpParms.position.character - 1);
-            const result = await serverComm.writeCommand('function ' + func_name + '\n');
-            func_sign = result[0].replace('\r', '').replace('\n', '')
+    const line = signatureHelpParms.position.line;
+    const character = signatureHelpParms.position.character;
+    let noCommas = 0;
+    let noPars = 0;
+    let func_index = 0;
 
-            pars = [];
-            const unparsed = func_sign.split('(')[1].replace(')', '').replace(' ', '').replace('\t', '').split(',');
-            for (let i = 0; i < unparsed.length; ++i) {
-                pars.push({
-                    label: unparsed[i]
-                })
+    let ln = readDocLine(line);
+
+    for (let i = character - 1; i >= 0; --i) {
+        if (ln[i] == '(') {
+            if (noPars == 0) {
+                func_index = i;
+                break;
             }
-
-            last_function.push({
-                'name': func_sign,
-                'argn': 0,
-                'pars': pars
-            });
-        //}
-        return {
-            signatures: [
-                {
-                    label: func_sign, 
-                    parameters: pars,
-                    activeParameter: 0
-                }
-            ]
+            else {
+                --noPars;
+            }
+        }
+        if (ln[i] == ')') {
+            ++noPars;
+        }
+        if (noPars == 0 && ln[i] == ',') {
+            ++noCommas;
         }
     }
-    else if (signatureHelpParms.context?.triggerCharacter === ',') {
-        if (last_function.length == 0) {
-            return null;
-        }
-        const lf = last_function[last_function.length-1];
-        const newarg = Math.min(lf['argn'] + 1, lf['pars'].length - 1);
 
-        last_function[last_function.length - 1]['argn'] = newarg;
+    while ([' ', '\t'].includes(ln[func_index--]));
 
-        return {
-            signatures: [
-                {
-                    label: lf['name'], 
-                    parameters: lf['pars'],
-                    activeParameter: newarg
-                }
-            ]
-        }
+    const func_name = readWordBefore(ln, func_index, true);
+
+    if (func_name.length == 0 || ['if', 'while', 'else', 'for', 'repeat', 'foreach', 'forall', 'do'].includes(func_name.trim())) {
+        return null;
     }
-    else if (signatureHelpParms.context?.triggerCharacter === ')') {
-        if (last_function.length == 0) {
-            return null;
-        }
-        last_function.pop();
-        if (last_function.length == 0) {
-            return null;
-        }
-        const lf = last_function[last_function.length-1];
-        return {
-            signatures: [
-                {
-                    label: lf['name'], 
-                    parameters: lf['pars'],
-                    activeParameter: lf['argn']
-                }
-            ]
-        }
+
+    const result = await serverComm.writeCommand('function ' + func_name + '\n');
+
+    if (result[0].startsWith('No function')) {
+        return null;
     }
-    else {
-        const lf =  last_function[last_function.length-1];
 
-        const line = readDocLine(signatureHelpParms.position.line);
+    const func_sign = result[0].replace('\r', '').replace('\n', '');
 
-        if (line[signatureHelpParms.position.character - 1] == ')') {
-            if (last_function.length == 0) {
-                return null;
-            }
-            last_function.pop();
-            if (last_function.length == 0) {
-                return null;
-            }
-            const lf = last_function[last_function.length-1];
-            return {
-                signatures: [
-                    {
-                        label: lf['name'], 
-                        parameters: lf['pars'],
-                        activeParameter: lf['argn']
-                    }
-                ]
-            }
-        }
-        else {
-            var noCommas = 0;
-            var noPars = 0;
+    const pars = [];
+    const unparsed = func_sign.split('(')[1].replace(')', '').replace(' ', '').replace('\t', '').split(',');
+    for (let i = 0; i < unparsed.length; ++i) {
+        pars.push({
+            label: unparsed[i]
+        })
+    }
 
-            for (let i = signatureHelpParms.position.character - 1; i >= 0; --i) {
-                if (line[i] == '(') {
-                    if (noPars == 0) {
-                        break;
-                    }
-                    else {
-                        --noPars;
-                    }
-                }
-                if (line[i] == ')') {
-                    ++noPars;
-                }
-                if (noPars == 0 && line[i] == ',') {
-                    ++noCommas;
-                }
+    return {
+        signatures: [
+            {
+                label: func_sign, 
+                parameters: pars,
+                activeParameter: noCommas
             }
-
-            const newarg = Math.min(noCommas, lf['pars'].length - 1);
-            last_function[last_function.length - 1]['argn'] = newarg;
-
-            return {
-                signatures: [
-                    {
-                        label: lf['name'], 
-                        parameters: lf['pars'],
-                        activeParameter: newarg
-                    }
-                ]
-            }
-        }
+        ]
     }
 });
 
@@ -539,7 +469,7 @@ connection.onDefinition(async (definitionParams): Promise<any> => {
         result = await serverComm.writeCommand('where-f ' + varname + '\n');
     }
     else {
-        result = await serverComm.writeCommand('where-v ' + definitionParams.position.line + varname + '\n');
+        result = await serverComm.writeCommand('where-v ' + definitionParams.position.line + ' ' + varname + '\n');
     }
 
     return {
