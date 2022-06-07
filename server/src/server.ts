@@ -250,7 +250,7 @@ async function validateTextDocument(errrs: string[], textDocument: TextDocument)
                 },
 				end: {
                     line: line - 1,
-                    character: 0
+                    character: readDocLine(line - 1).length
                 }
 			},
 			message: errrs[i],
@@ -427,7 +427,11 @@ function readWord(line: string, position: number) {
 
 function readDocLine(line: number) {
     const txt : string = cachedDoc;
-    return txt.replaceAll('\r', '').split('\n')[line];
+    const txtSplit = txt.replaceAll('\r', '').split('\n');
+    if (line >= txtSplit.length) {
+        return '';
+    }
+    return txtSplit[line];
 }
 
 // -----------------------------------------------------------------------------------------
