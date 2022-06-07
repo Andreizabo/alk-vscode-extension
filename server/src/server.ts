@@ -539,7 +539,7 @@ connection.onDefinition(async (definitionParams): Promise<any> => {
         result = await serverComm.writeCommand('where-f ' + varname + '\n');
     }
     else {
-        result = await serverComm.writeCommand('where-v ' + definitionParams.position.line + varname + '\n');
+        result = await serverComm.writeCommand('where-v ' + definitionParams.position.line + ' ' + varname + '\n');
     }
 
     return {

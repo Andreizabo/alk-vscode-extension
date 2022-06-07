@@ -60,9 +60,6 @@ export class AlkServerComm extends EventEmitter
                 }
             }
         });
-        this._childProcess.stderr.on('data', (data: any) => {
-            this.sendEvent('output', 'stderr', data.toString());
-        });
         this._childProcess.on('close', (code: number) => {
             console.log(`child process exited with code ${code}`);
             this.sendEvent('end');
@@ -90,8 +87,8 @@ export class AlkServerComm extends EventEmitter
             this._childProcess.stdin.write(args[i]);
         }
         const trimmedCommand = command.trim();
-        await this.waitForCommand(trimmedCommand);
         console.log(`Command: ${command}`);
+        await this.waitForCommand(trimmedCommand);
         let commandOutputArray = this._commandOutput.get(trimmedCommand) || [['???']];
         const commandOutput = commandOutputArray[0];
         commandOutputArray.shift();
