@@ -241,7 +241,7 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(optionsDisposable);
     context.subscriptions.push(getActiveFileDisposable);
     context.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('alk', new InlineDebugAdapterFactory(context)));
-	context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('alk', new AlkConfigurationProvider()));
+    context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('alk', new AlkConfigurationProvider()));
 
     let serverModule = context.asAbsolutePath(path.join('server', 'out', 'server.js'));
     let debugOptions = { execArgv: ['--nolazy', '--inspect=6009'] };
@@ -526,10 +526,18 @@ vscode.languages.registerDocumentFormattingEditProvider('alk', {
                     }
                     else if (line[i] === ')') {
                         --expFuncPhar;
-                        if (i === 0) {
-                            line = insertAt(line, makeTabs(tabs), i);
-                            i += tabs;
-                            len += tabs;
+                        // if (i === 0) {
+                        //     line = insertAt(line, makeTabs(tabs), i);
+                        //     i += tabs;
+                        //     len += tabs;
+                        // }
+                        if (expFuncPhar == 0 && line.substring(i).indexOf('{') !== -1 && line.substring(i).indexOf(';') > line.substring(i).indexOf('{')) {
+                            while (line[++i] != '{');
+                            --i;
+                        }
+                        else if (line[i + 1] == ';') {
+                            lastWasntInstr = true;
+                            ++i;
                         }
                     }
                 }
@@ -563,7 +571,7 @@ vscode.languages.registerDocumentFormattingEditProvider('alk', {
                 let i = 1;
                 while (index !== -1 && index < line.length) {
                     if ((index > 0 && doubleSpace.includes(line.substring(index - 1, index + symbol.length))) || doubleSpace.includes(line.substring(index, index + 1 + symbol.length)) ||
-                    (index > 0 && singleSpace.includes(line.substring(index - 1, index + symbol.length))) || singleSpace.includes(line.substring(index, index + 1 + symbol.length))) {
+                        (index > 0 && singleSpace.includes(line.substring(index - 1, index + symbol.length))) || singleSpace.includes(line.substring(index, index + 1 + symbol.length))) {
                         index = getPosition(line, symbol, ++i);
                         continue;
                     }
@@ -584,7 +592,7 @@ vscode.languages.registerDocumentFormattingEditProvider('alk', {
                 let i = 1;
                 while (index !== -1 && index < line.length) {
                     if ((index > 0 && doubleSpace.includes(line.substring(index - 1, index + 1))) || doubleSpace.includes(line.substring(index, index + 2)) ||
-                    (index > 0 && singleSpace.includes(line.substring(index - 1, index + 1))) || singleSpace.includes(line.substring(index, index + 2))) {
+                        (index > 0 && singleSpace.includes(line.substring(index - 1, index + 1))) || singleSpace.includes(line.substring(index, index + 2))) {
                         index = getPosition(line, symbol, ++i);
                         continue;
                     }
@@ -612,24 +620,24 @@ vscode.languages.registerDocumentFormattingEditProvider('alk', {
         let lineArr: string[] = [];
         for (let i = 0; i < linesNo; ++i) {
             lineArr.push(document.lineAt(i).text);
-        //     let thisLine = document.lineAt(i).text;
+            //     let thisLine = document.lineAt(i).text;
 
-        //     let result = handleBlock(thisLine, tabs, handledConditional, preservedConditional, expPhar, expFuncPhar);
-        //     thisLine = result["line"];
-        //     handledConditional = result["handledConditional"];
-        //     preservedConditional = result["preservedConditional"];
-        //     expPhar = result["expPhar"];
-        //     expFuncPhar = result["expFuncPhar"];
+            //     let result = handleBlock(thisLine, tabs, handledConditional, preservedConditional, expPhar, expFuncPhar);
+            //     thisLine = result["line"];
+            //     handledConditional = result["handledConditional"];
+            //     preservedConditional = result["preservedConditional"];
+            //     expPhar = result["expPhar"];
+            //     expFuncPhar = result["expFuncPhar"];
 
-        //     operations.push(vscode.TextEdit.replace(document.lineAt(i).range, thisLine.replace('\n', '')));
+            //     operations.push(vscode.TextEdit.replace(document.lineAt(i).range, thisLine.replace('\n', '')));
 
-        //     tabs = result["tabs"];
-        //    operations.push(vscode.TextEdit.delete(document.lineAt(i).range));
+            //     tabs = result["tabs"];
+            //    operations.push(vscode.TextEdit.delete(document.lineAt(i).range));
         }
         operations.push({
             newText: '',
             range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(linesNo + 1, 0))
-        })
+        });
         //writeFileSync(document.uri.fsPath, '', {flag: 'w'});
 
         let superLine = lineArr.join(" ");

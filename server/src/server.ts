@@ -523,7 +523,7 @@ connection.onHover(async (hoverParams): Promise<any> => {
 
     let isFunc = false;
     
-    for (let i = hoverParams.position.character + varname.length; i < docLine.length; ++i) {
+    for (let i = hoverParams.position.character + readWordAfter(docLine, hoverParams.position.character-1).length; i < docLine.length; ++i) {
         if (docLine[i] == ' ' || docLine[i] == '\t') {
             continue;
         }
@@ -571,7 +571,7 @@ connection.onReferences(async (referenceParams): Promise<any> => {
 
     let isFunc = false;
     
-    for (let i = referenceParams.position.character + varname.length; i < docLine.length; ++i) {
+    for (let i = referenceParams.position.character + readWordAfter(docLine, referenceParams.position.character-1).length; i < docLine.length; ++i) {
         if (docLine[i] == ' ' || docLine[i] == '\t') {
             continue;
         }
