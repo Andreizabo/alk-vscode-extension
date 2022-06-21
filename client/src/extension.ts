@@ -205,6 +205,10 @@ export function activate(context: vscode.ExtensionContext) {
         runAlkFile(context, alkOutput, javaInstalled, true);
     });
 
+    // let debugDisposable = vscode.commands.registerCommand('alk.runDebug', () => {
+    //     vscode.
+    // });
+
     let stopDisposable = vscode.commands.registerCommand('alk.stop', () => {
         if (currentRunningProcess) {
             const kill = require('tree-kill');
@@ -237,6 +241,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(disposable);
     context.subscriptions.push(exhaustiveDisposable);
+    //context.subscriptions.push(debugDisposable);
     context.subscriptions.push(stopDisposable);
     context.subscriptions.push(optionsDisposable);
     context.subscriptions.push(getActiveFileDisposable);
