@@ -50,6 +50,12 @@
                 "icon": "$(debug-alt)"
             },
             {
+                "command": "alk.runDebug",
+                "title": "Debug Alk",
+                "category": "Alk",
+                "icon": "$(debug-alt)"
+            },
+            {
                 "command": "alk.stop",
                 "title": "Stop Alk",
                 "category": "Alk",
@@ -163,6 +169,11 @@
                     "group": "z_commands"
                 },
                 {
+                    "when": "resourceLangId == alk && alk.canRun",
+                    "command": "alk.runDebug",
+                    "group": "z_commands"
+                },
+                {
                     "when": "resourceLangId == alk && !alk.canRun",
                     "command": "alk.stop",
                     "group": "z_commands"
@@ -189,6 +200,11 @@
                 {
                     "when": "resourceLangId == alk && alk.canRun",
                     "command": "alk.runExhaustive",
+                    "group": "z_commands"
+                },
+                {
+                    "when": "resourceLangId == alk && alk.canRun",
+                    "command": "alk.runDebug",
                     "group": "z_commands"
                 },
                 {

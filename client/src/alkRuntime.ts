@@ -49,17 +49,18 @@ export class AlkRuntime extends EventEmitter
         
         if (os.type() === 'Windows_NT')
         {
-            command = alkPath;
+            command = `"${alkPath}"`;
             args = ['-a', `"${mainFile}"`, '-d', '-dm', /*options*/];
         }
         else
         {
             command = '/bin/bash';
-            args = [alkPath, '-a', `"${mainFile}"`, '-d', '-dm', /*options*/];
+            args = [alkPath, '-a', `${mainFile}`, '-d', '-dm', /*options*/];
         }
         const cp = require('child_process');
         this._childProcess = cp.spawn(command, args, {
-            stdio: 'pipe'
+            stdio: 'pipe',
+            shell: true
         });
         this._childProcess.stdout.on('data', async (data: any) => {
             for (let c of data.toString())
