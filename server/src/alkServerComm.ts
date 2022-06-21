@@ -25,7 +25,7 @@ export class AlkServerComm extends EventEmitter
         else
         {
             command = '/bin/bash';
-            args = [`"${alkPath}"`];
+            args = [alkPath];
         }
         const cp = require('child_process');
         this._childProcess = cp.spawn(command, args, {
