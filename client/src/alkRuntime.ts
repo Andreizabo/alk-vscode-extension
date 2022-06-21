@@ -258,6 +258,13 @@ export class AlkRuntime extends EventEmitter
         this.sendEvent('stopOnBreakpoint');
     }
 
+    public async stepOut(): Promise<void>
+    {
+        const output = await this.writeCommand('finish\n');
+        this.printProgramOutput(output);
+        this.sendEvent('stopOnStep');
+    }
+
     public async back(): Promise<void>
     {
         const output = await this.writeCommand('back\n');

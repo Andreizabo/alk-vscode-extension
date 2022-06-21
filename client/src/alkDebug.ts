@@ -276,11 +276,11 @@ export class AlkDebugSession extends LoggingDebugSession
 		this.sendResponse(response);
 	}
 
-	// protected stepOutRequest(response: DebugProtocol.StepOutResponse, args: DebugProtocol.StepOutArguments): void 
-	// {
-	// 	// this._runtime.stepOut();
-	// 	this.sendResponse(response);
-	// }
+	protected stepOutRequest(response: DebugProtocol.StepOutResponse, args: DebugProtocol.StepOutArguments): void 
+	{
+		this._runtime.stepOut();
+		this.sendResponse(response);
+	}
 
 	protected async evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments): Promise<void> 
 	{
