@@ -27,6 +27,7 @@ import {
 import { exit } from 'process';
 import path = require('path');
 import { SignatureHelp } from 'vscode';
+import * as os from 'os';
 
 const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_";
 const alphanum = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_1234567890";
@@ -95,7 +96,14 @@ let hasDiagnosticRelatedInformationCapability = false;
 
 connection.onInitialize((params: InitializeParams) => {
     console.log("test");
-    serverComm.start(__dirname + "\\..\\..\\media\\alk\\alkls.bat");
+    if (os.type() === 'Windows_NT')
+    {
+        serverComm.start(__dirname + "\\..\\..\\media\\alk\\alkls.bat");
+    }
+    else
+    {
+        serverComm.start(__dirname + "/../../media/alk/alkls.sh");
+    }
 	const capabilities = params.capabilities;
 
 	// Does the client support the `workspace/configuration` request?

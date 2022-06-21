@@ -55,7 +55,7 @@ export class AlkRuntime extends EventEmitter
         else
         {
             command = '/bin/bash';
-            args = [`"${alkPath}"`, '-a', `"${mainFile}"`, '-d', options];
+            args = [alkPath, '-a', `"${mainFile}"`, '-d', '-dm', /*options*/];
         }
         const cp = require('child_process');
         this._childProcess = cp.spawn(command, args, {
@@ -67,7 +67,7 @@ export class AlkRuntime extends EventEmitter
                 this._alkOutput += c;
                 if (c === '\n')
                 {
-                    if (this._linesSkipped < 4)
+                    if (os.type() === 'Windows_NT' && this._linesSkipped < 4)
                     {
                         this._linesSkipped++;
                         this._alkOutput = '';
