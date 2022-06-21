@@ -124,7 +124,8 @@ connection.onInitialize((params: InitializeParams) => {
             },
             definitionProvider: true,
             hoverProvider: true,
-            referencesProvider: true
+            referencesProvider: true,
+            documentFormattingProvider: true
 		}
 	};
 	if (hasWorkspaceFolderCapability) {
@@ -203,6 +204,7 @@ documents.onDidClose(e => {
 
 let cachedDoc : string = '';
 let cachedDocPath : string = '';
+let cachedErrs : number = 0;
 
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
@@ -258,6 +260,7 @@ async function validateTextDocument(errrs: string[], textDocument: TextDocument)
 		};
 		diagnostics.push(diagnostic);
 	}
+    cachedErrs = diagnostics.length;
 	connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 }
 
@@ -607,6 +610,487 @@ connection.onReferences(async (referenceParams): Promise<any> => {
     }
 
     return ret;
+});
+
+// -----------------------------------------------------------------------------------------
+
+// FORMAT
+
+function removeAllSpaces(line: string) {
+    return line.trim().replace(/\s\s+/g, ' ');
+}
+function makeTabs(tabs: number) {
+    let tab = '';
+    for (let i = 0; i < tabs; ++i) {
+        tab += '\t';
+    }
+    return tab;
+}
+function getPosition(string: string, subString: string, index: number) {
+    if (!string.includes(subString)) {
+        return -1;
+    }
+    return string.split(subString, index).join(subString).length;
+}
+function countChar(string: string, chr: string) {
+    return string.split(chr).length - 1;
+}
+function insertAt(string: string, inst: string, index: number) {
+    return string.substring(0, index) + inst + string.substring(index);
+}
+function replaceAt(string: string, replace: string, index: number) {
+    return string.substring(0, index) + replace + string.substring(index + replace.length);
+}
+function deleteAt(string: string, index: number) {
+    return string.substring(0, index) + string.substring(index + 1);
+}
+function conditional(string: string) {
+    let stripped = removeAllSpaces(string);
+    return stripped.startsWith("if") ||
+        stripped.startsWith("while") ||
+        stripped.startsWith("else") ||
+        stripped.startsWith("for") ||
+        stripped.startsWith("repeat") ||
+        stripped.startsWith("foreach") ||
+        stripped.startsWith("forall") ||
+        stripped.startsWith("do");
+}
+function conditionalWithPhar(string: string) {
+    let stripped = removeAllSpaces(string);
+    return stripped.startsWith("if") ||
+        stripped.startsWith("while") ||
+        (stripped.startsWith("for") && !stripped.startsWith("foreach")) ||
+        stripped.startsWith("forall");
+}
+function isFunction(line: string, index: number) {
+    for (let i = index; i < line.length; ++i) {
+        if (line[i] == ' ' || line[i] == '\t') {
+            return false;
+        }
+        if (line[i] == '(') {
+            return true;
+        }
+    }
+    return false;
+}
+function handleBlock(line: string, tabs: number, handledConditional: number, preservedConditional: number, expPhar: number, expFuncPhar: number) {
+    let len = line.length;
+    line = removeAllSpaces(line).replace('/\n/g', '').replace('/\t/g', '').replace('/\s/g', '');
+    let i = 0;
+    if (line[i] === '{') {
+        i = 1;
+    }
+    let lastWasntInstr = true;
+    while (i < len) {
+        if (line[i] === '"') {
+            i += line.substring(i + 1).indexOf('"');
+            ++i;
+        }
+        if (expPhar === 0 && expFuncPhar === 0) {
+            if (line[i] === '{') {
+                lastWasntInstr = true;
+                if (handledConditional > 0) {
+                    preservedConditional = handledConditional - 1;
+                    handledConditional = 0;
+                    --tabs;
+                }
+                line = insertAt(line, '\n' + makeTabs(tabs), i);
+                ++tabs;
+                i += tabs;
+                len += tabs;
+            }
+            else if (line[i] === '}') {
+                lastWasntInstr = true;
+                --tabs;
+                line = insertAt(line, '\n' + makeTabs(tabs), i);
+                i += tabs + 1;
+                len += tabs + 1;
+                handledConditional = preservedConditional;
+            }
+            else if (line[i] === ' ' || line[i] === '\t') {
+                lastWasntInstr = true;
+                line = replaceAt(line, '', i);
+            }
+            else if (lastWasntInstr) {
+                lastWasntInstr = false;
+                line = insertAt(line, '\n' + makeTabs(tabs), i);
+                i += tabs + 1;
+                len += tabs + 1;
+
+                if (line.substring(i).startsWith('foreach')) {
+                    if (line.substring(i).indexOf(';') > -1 && (line.substring(i).indexOf('{') === -1 || line.substring(i).indexOf(';') < line.substring(i).indexOf('{'))) {
+                        i += line.substring(i).indexOf(';');
+                    }
+                    else {
+                        i += line.substring(i).indexOf('{');
+                        --i;
+                    }
+                }
+                else if (conditional(line.substring(i))) {
+                    ++tabs;
+                    if (conditionalWithPhar(line.substring(i))) {
+                        i += line.substring(i).indexOf('(');
+                        ++expPhar;
+                    }
+                    else {
+                        ++handledConditional;
+                    }
+                }
+                else {
+                    if (handledConditional > 0) {
+                        --tabs;
+                        --handledConditional;
+                    }
+                    if (isFunction(line, i)) {
+                        i += line.substring(i).indexOf('(');
+                        ++expFuncPhar;
+                    }
+                    else {
+                        i += line.substring(i).indexOf(';');
+                    }
+                }
+            }
+        }
+        else if (expPhar === 0 && expFuncPhar > 0) {
+            if (line[i] === '(') {
+                ++expFuncPhar;
+                // line = insertAt(line, '\n' + makeTabs(tabs), i);
+                // ++tabs;
+                // i += tabs;
+                // len += tabs;
+            }
+            else if (line[i] === ')') {
+                --expFuncPhar;
+                // if (i === 0) {
+                //     line = insertAt(line, makeTabs(tabs), i);
+                //     i += tabs;
+                //     len += tabs;
+                // }
+                if (expFuncPhar == 0 && line.substring(i).indexOf('{') !== -1 && line.substring(i).indexOf(';') > line.substring(i).indexOf('{')) {
+                    while (line[++i] != '{');
+                    --i;
+                }
+                else if (line[i + 1] == ';') {
+                    lastWasntInstr = true;
+                    ++i;
+                }
+            }
+        }
+        else if (expPhar > 0 && expFuncPhar === 0) {
+            if (line[i] === '(') {
+                ++expPhar;
+            }
+            else if (line[i] === ')') {
+                --expPhar;
+                if (expPhar === 0) {
+                    ++handledConditional;
+                }
+            }
+        }
+        ++i;
+    }
+    return {
+        "line": line,
+        "tabs": tabs,
+        "handledConditional": handledConditional,
+        "preservedConditional": preservedConditional,
+        "expPhar": expPhar,
+        "expFuncPhar": expFuncPhar
+    };
+}
+function inString(line: string, index: number) {
+    let noLeft = 0;
+    let noRight = 0;
+
+    for (let i = 0; i < line.length; ++i) {
+        if (line[i] === '"') {
+            if (i < index) {
+                ++noLeft;
+            }
+            else {
+                ++noRight;
+            }
+        }
+    }
+
+    return noLeft % 2 == 1 && noRight % 2 == 1;
+}
+function spacing(line: string) {
+    let doubleSpace = ['+', '-', '*', ':', '/', '=', '<', '>', "+=", "-=", '*=', "/=", "==", "<=", ">="];
+    let singleSpace = [';', ',', '.', "++", "--"];
+    for (var symbol of doubleSpace) {
+        let index = getPosition(line, symbol, 1);
+        let i = 1;
+        while (index !== -1 && index < line.length) {
+            if (!inString(line, index)) {
+                if ((index > 0 && doubleSpace.includes(line.substring(index - 1, index + symbol.length))) || doubleSpace.includes(line.substring(index, index + 1 + symbol.length)) ||
+                    (index > 0 && singleSpace.includes(line.substring(index - 1, index + symbol.length))) || singleSpace.includes(line.substring(index, index + 1 + symbol.length))) {
+                    index = getPosition(line, symbol, ++i);
+                    continue;
+                }
+                if (index > 0) {
+                    if (line[index - 1] !== ' ') {
+                        line = insertAt(line, ' ', index);
+                        ++index;
+                    }
+                }
+                if (line[index + symbol.length] !== ' ') {
+                    line = insertAt(line, ' ', index + symbol.length);
+                }
+            }
+            index = getPosition(line, symbol, ++i);
+        }
+    }
+    for (var symbol of singleSpace) {
+        let index = getPosition(line, symbol, 1);
+        let i = 1;
+        while (index !== -1 && index < line.length) {
+            if ((index > 0 && doubleSpace.includes(line.substring(index - 1, index + 1))) || doubleSpace.includes(line.substring(index, index + 2)) ||
+                (index > 0 && singleSpace.includes(line.substring(index - 1, index + 1))) || singleSpace.includes(line.substring(index, index + 2))) {
+                index = getPosition(line, symbol, ++i);
+                continue;
+            }
+            if (index > 0) {
+                if (line[index - 1] === ' ') {
+                    line = deleteAt(line, index - 1);
+                }
+            }
+            if (line[index + symbol.length] !== ' ' && line[index + symbol.length] !== '\n' && line[index + symbol.length] !== '\t') {
+                line = insertAt(line, ' ', index + symbol.length);
+            }
+            index = getPosition(line, symbol, ++i);
+        }
+    }
+    return line;
+}
+function inBigComment(doc: string, index: number) {
+    let noStart = 0;
+    let noEnd = 0;
+    for (let i = 0; i < index - 1; ++i) {
+        if (doc[i] === '/' && doc[i + 1] === '*') {
+            ++noStart;
+        }
+        else if (((i > 0 && doc[i - 1] !== '/') || i == 0) && doc[i] === '*' && doc[i + 1] === '/') {
+            ++noEnd;
+        }
+    }
+    return noStart > noEnd;
+}
+function findAnchor(doc: string, index: number, len: number) {
+    let bef = 0;
+    let befChr = '';
+    for (let i = index; i > 0; --i) {
+        if (![' ', '\n', '\t'].includes(doc[i])) {
+            befChr = doc[i];
+            break;
+        }
+        else {
+            if (doc[i] == '\n') {
+                ++bef;
+            }
+        }
+    }
+    let aft = 0;
+    for (let i = index + len; i < doc.length; ++i) {
+        if (![' ', '\n', '\t'].includes(doc[i])) {
+            break;
+        }
+        else {
+            if (doc[i] == '\n') {
+                ++aft;
+            }
+        }
+    }
+    bef = Math.min(2, bef);
+    aft = Math.min(2, aft);
+
+    return {
+        pref: bef === 2 ? '\n\n' : bef === 1 ? '\n' : '',
+        suff: aft === 2 ? '\n' : '',
+        type: befChr,
+        no: countChar(doc.substring(0, index), befChr)
+    }
+}
+function getComms(doc: string) {
+    doc = doc.replaceAll('\r', '');
+    const lines = doc.split('\n');
+    const comms = [];
+    let additive = 0;
+    for (let i = 0; i < lines.length; ++i) {
+        if (lines[i].includes('//') && !inBigComment(doc, additive + lines[i].indexOf('//'))) {
+            const anchor = findAnchor(doc, additive + lines[i].indexOf('//') - 1, lines[i].substring(lines[i].indexOf('//')).length + 1);
+            comms.push({
+                comm: lines[i].substring(lines[i].indexOf('//')),
+                suff: anchor['suff'],
+                pref: anchor['pref'],
+                type: 'line',
+                anchor: anchor['type'],
+                anchorNo: anchor['no'],
+                pos: additive + lines[i].indexOf('//')
+            });
+        }
+        additive += lines[i].length;
+        ++additive;
+    }
+    let incom = false;
+    let inline = false;
+    let idx = -1;
+    let cm = '';
+    for (let i = 0; i < doc.length - 1; ++i) {
+        if (doc[i] === '/' && doc[i + 1] === '*') {
+            if (!inline && !incom) {
+                idx = i;
+                incom = true;
+                cm = '/*';
+                ++i;
+            }
+        }
+        else if (((i > 0 && doc[i - 1] !== '/') || i == 0) && doc[i] === '*' && doc[i + 1] === '/') {
+            if (incom) {
+                const anchor = findAnchor(doc, idx - 1, i - idx + 1);
+                comms.push({
+                    comm: cm + '*/',
+                    suff: anchor['suff'],
+                    pref: anchor['pref'],
+                    type: 'multi',
+                    anchor: anchor['type'],
+                    anchorNo: anchor['no'],
+                    pos: idx
+                });
+                incom = false;
+                ++i;
+            }
+        }
+        else {
+            if (incom) {
+                cm += doc[i];
+            }
+            else {
+                if (doc[i] === '/' && doc[i + 1] === '/') {
+                    inline = true;
+                }
+                else if (doc[i] === '\n') {
+                    inline = false;
+                }
+            }
+        }
+    }
+    return comms;
+}
+function rmComms(doc: string) {
+    let hasComms = false;
+    let newDoc = doc;
+    do {
+        hasComms = false;
+        let start = -1;
+        let finish = -1;
+        for (let i = newDoc.length; i > 1; --i) {
+            if (newDoc[i - 1] === '*' && newDoc[i] === '/') {
+                finish = i;
+                break;
+            }
+        }
+        for (let i = finish - 1; i > 0; --i) {
+            if (newDoc[i - 1] === '/' && newDoc[i] === '*') {
+                start = i - 1;
+                break;
+            }
+        }
+        if (start !== -1) {
+            newDoc = newDoc.replaceAll(newDoc.substring(start, finish + 1), '');
+            hasComms = true;
+        }
+    } while (hasComms);
+
+    newDoc = newDoc.split('\n').map(line => line.replace(/\/\/.*/, '')).join('\n');
+
+    return newDoc;
+}
+function putComms(doc: string, comms: any[]) {
+    comms = comms.sort((a, b) => a['pos'] - b['pos']);
+    let newDoc = doc;
+
+    let handleStart = 0;
+    for (let i = comms.length - 1; i >= 0; --i) {
+        const cm = comms[i];
+        if (cm['anchorNo'] !== -1) {
+            continue;
+        }
+        else {
+            if (handleStart == 0) {
+                handleStart = i + 1;
+            }
+            newDoc = insertAt(newDoc, cm['pref'] + cm['comm'] + cm['suff'] + '\n', 0);
+        }
+    }
+
+    for (let i = handleStart; i < comms.length; ++i) {
+        const cm = comms[i];
+        const index = getPosition(newDoc, cm['anchor'], cm['anchorNo']);
+        const tabsIdx = doc.substring(index).indexOf('\t');
+        let tabs = '';
+        for (let j = tabsIdx; j < doc.length; ++j) {
+            if (doc[j] === '\t') {
+                tabs += '\t';
+            }
+            else {
+                break;
+            }
+        }
+        newDoc = insertAt(newDoc, cm['pref'] + tabs + cm['comm'] + cm['suff'], index + newDoc.substring(index).indexOf('\n'));
+    }
+
+    return newDoc;
+}
+
+connection.onDocumentFormatting(formattingParams => {
+    if (cachedErrs > 0) {
+        return null;
+    }
+    const comms = getComms(cachedDoc);
+    const uncommented = rmComms(cachedDoc);
+    const document = uncommented.split('\n');
+    const linesNo = cachedDoc.split('\n').length;
+    let operations = [];
+    let lineArr: string[] = [];
+    for (let i = 0; i < linesNo; ++i) {
+        lineArr.push(document[i]);
+    }
+    operations.push({
+        newText: '',
+        range: {
+            start: {
+                line: 0,
+                character: 0
+            },
+            end: {
+                line: linesNo + 1,
+                character: 0
+            }
+        }
+    });
+
+    let superLine = lineArr.join(" ");
+    superLine = handleBlock(superLine, 0, 0, 0, 0, 0)["line"];
+    superLine = spacing(superLine);
+    if (superLine[0] == '\n') {
+        superLine = superLine.substring(1);
+    }
+    superLine = putComms(superLine, comms);
+    operations.push({
+        newText: superLine,
+        range: {
+            start: {
+                line: 0,
+                character: 0
+            },
+            end: {
+                line: 0,
+                character: 0
+            }
+        }
+    });
+    return operations;
 });
 
 // -----------------------------------------------------------------------------------------

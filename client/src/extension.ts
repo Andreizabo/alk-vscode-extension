@@ -391,259 +391,293 @@ export function deactivate(): Thenable<void> | undefined {
     return client.stop();
 }
 
-vscode.languages.registerDocumentFormattingEditProvider('alk', {
-    provideDocumentFormattingEdits(document: vscode.TextDocument): vscode.TextEdit[] {
-        function removeAllSpaces(line: string) {
-            return line.trim().replace(/\s\s+/g, ' ');
-        }
-        function makeTabs(tabs: number) {
-            let tab = '';
-            for (let i = 0; i < tabs; ++i) {
-                tab += '\t';
-            }
-            return tab;
-        }
-        function getPosition(string: string, subString: string, index: number) {
-            if (!string.includes(subString)) {
-                return -1;
-            }
-            return string.split(subString, index).join(subString).length;
-        }
-        function countChar(string: string, chr: string) {
-            return string.split(chr).length - 1;
-        }
-        function insertAt(string: string, inst: string, index: number) {
-            return string.substring(0, index) + inst + string.substring(index);
-        }
-        function replaceAt(string: string, replace: string, index: number) {
-            return string.substring(0, index) + replace + string.substring(index + replace.length);
-        }
-        function deleteAt(string: string, index: number) {
-            return string.substring(0, index) + string.substring(index + 1);
-        }
-        function conditional(string: string) {
-            let stripped = removeAllSpaces(string);
-            return stripped.startsWith("if") ||
-                stripped.startsWith("while") ||
-                stripped.startsWith("else") ||
-                stripped.startsWith("for") ||
-                stripped.startsWith("repeat") ||
-                stripped.startsWith("foreach") ||
-                stripped.startsWith("forall") ||
-                stripped.startsWith("do");
-        }
-        function conditionalWithPhar(string: string) {
-            let stripped = removeAllSpaces(string);
-            return stripped.startsWith("if") ||
-                stripped.startsWith("while") ||
-                stripped.startsWith("for") ||
-                stripped.startsWith("foreach") ||
-                stripped.startsWith("forall");
-        }
-        function isFunction(line: string, index: number) {
-            for (let i = index; i < line.length; ++i) {
-                if (line[i] == ' ' || line[i] == '\t') {
-                    return false;
-                }
-                if (line[i] == '(') {
-                    return true;
-                }
-            }
-            return false;
-        }
-        function handleBlock(line: string, tabs: number, handledConditional: number, preservedConditional: number, expPhar: number, expFuncPhar: number) {
-            let len = line.length;
-            line = removeAllSpaces(line).replace('/\n/g', '').replace('/\t/g', '').replace('/\s/g', '');
-            let i = 0;
-            if (line[i] === '{') {
-                i = 1;
-            }
-            let lastWasntInstr = true;
-            while (i < len) {
-                if (expPhar === 0 && expFuncPhar === 0) {
-                    if (line[i] === '{') {
-                        lastWasntInstr = true;
-                        if (handledConditional > 0) {
-                            preservedConditional = handledConditional - 1;
-                            handledConditional = 0;
-                            --tabs;
-                        }
-                        line = insertAt(line, '\n' + makeTabs(tabs), i);
-                        ++tabs;
-                        i += tabs;
-                        len += tabs;
-                    }
-                    else if (line[i] === '}') {
-                        lastWasntInstr = true;
-                        --tabs;
-                        line = insertAt(line, '\n' + makeTabs(tabs), i);
-                        i += tabs + 1;
-                        len += tabs + 1;
-                        handledConditional = preservedConditional;
-                    }
-                    else if (line[i] === ' ' || line[i] === '\t') {
-                        lastWasntInstr = true;
-                        line = replaceAt(line, '', i);
-                    }
-                    else if (lastWasntInstr) {
-                        lastWasntInstr = false;
-                        line = insertAt(line, '\n' + makeTabs(tabs), i);
-                        i += tabs + 1;
-                        len += tabs + 1;
+// vscode.languages.registerDocumentFormattingEditProvider('alk', {
+//     provideDocumentFormattingEdits(document: vscode.TextDocument): vscode.TextEdit[] {
+//         function removeAllSpaces(line: string) {
+//             return line.trim().replace(/\s\s+/g, ' ');
+//         }
+//         function makeTabs(tabs: number) {
+//             let tab = '';
+//             for (let i = 0; i < tabs; ++i) {
+//                 tab += '\t';
+//             }
+//             return tab;
+//         }
+//         function getPosition(string: string, subString: string, index: number) {
+//             if (!string.includes(subString)) {
+//                 return -1;
+//             }
+//             return string.split(subString, index).join(subString).length;
+//         }
+//         function countChar(string: string, chr: string) {
+//             return string.split(chr).length - 1;
+//         }
+//         function insertAt(string: string, inst: string, index: number) {
+//             return string.substring(0, index) + inst + string.substring(index);
+//         }
+//         function replaceAt(string: string, replace: string, index: number) {
+//             return string.substring(0, index) + replace + string.substring(index + replace.length);
+//         }
+//         function deleteAt(string: string, index: number) {
+//             return string.substring(0, index) + string.substring(index + 1);
+//         }
+//         function conditional(string: string) {
+//             let stripped = removeAllSpaces(string);
+//             return stripped.startsWith("if") ||
+//                 stripped.startsWith("while") ||
+//                 stripped.startsWith("else") ||
+//                 stripped.startsWith("for") ||
+//                 stripped.startsWith("repeat") ||
+//                 stripped.startsWith("foreach") ||
+//                 stripped.startsWith("forall") ||
+//                 stripped.startsWith("do");
+//         }
+//         function conditionalWithPhar(string: string) {
+//             let stripped = removeAllSpaces(string);
+//             return stripped.startsWith("if") ||
+//                 stripped.startsWith("while") ||
+//                 (stripped.startsWith("for") && !stripped.startsWith("foreach")) ||
+//                 stripped.startsWith("forall");
+//         }
+//         function isFunction(line: string, index: number) {
+//             for (let i = index; i < line.length; ++i) {
+//                 if (line[i] == ' ' || line[i] == '\t') {
+//                     return false;
+//                 }
+//                 if (line[i] == '(') {
+//                     return true;
+//                 }
+//             }
+//             return false;
+//         }
+//         function handleBlock(line: string, tabs: number, handledConditional: number, preservedConditional: number, expPhar: number, expFuncPhar: number) {
+//             let len = line.length;
+//             line = removeAllSpaces(line).replace('/\n/g', '').replace('/\t/g', '').replace('/\s/g', '');
+//             let i = 0;
+//             if (line[i] === '{') {
+//                 i = 1;
+//             }
+//             let lastWasntInstr = true;
+//             while (i < len) {
+//                 if (line[i] === '"') {
+//                     i += line.substring(i + 1).indexOf('"');
+//                     ++i;
+//                 }
+//                 if (expPhar === 0 && expFuncPhar === 0) {
+//                     if (line[i] === '{') {
+//                         lastWasntInstr = true;
+//                         if (handledConditional > 0) {
+//                             preservedConditional = handledConditional - 1;
+//                             handledConditional = 0;
+//                             --tabs;
+//                         }
+//                         line = insertAt(line, '\n' + makeTabs(tabs), i);
+//                         ++tabs;
+//                         i += tabs;
+//                         len += tabs;
+//                     }
+//                     else if (line[i] === '}') {
+//                         lastWasntInstr = true;
+//                         --tabs;
+//                         line = insertAt(line, '\n' + makeTabs(tabs), i);
+//                         i += tabs + 1;
+//                         len += tabs + 1;
+//                         handledConditional = preservedConditional;
+//                     }
+//                     else if (line[i] === ' ' || line[i] === '\t') {
+//                         lastWasntInstr = true;
+//                         line = replaceAt(line, '', i);
+//                     }
+//                     else if (lastWasntInstr) {
+//                         lastWasntInstr = false;
+//                         line = insertAt(line, '\n' + makeTabs(tabs), i);
+//                         i += tabs + 1;
+//                         len += tabs + 1;
 
-                        if (conditional(line.substring(i))) {
-                            ++tabs;
-                            if (conditionalWithPhar(line.substring(i))) {
-                                i += line.substring(i).indexOf('(');
-                                ++expPhar;
-                            }
-                            else {
-                                ++handledConditional;
-                            }
-                        }
-                        else {
-                            if (handledConditional > 0) {
-                                --tabs;
-                                --handledConditional;
-                            }
-                            if (isFunction(line, i)) {
-                                i += line.substring(i).indexOf('(');
-                                ++expFuncPhar;
-                            }
-                            else {
-                                i += line.substring(i).indexOf(';');
-                            }
-                        }
-                    }
-                }
-                else if (expPhar === 0 && expFuncPhar > 0) {
-                    if (line[i] === '(') {
-                        ++expFuncPhar;
-                        // line = insertAt(line, '\n' + makeTabs(tabs), i);
-                        // ++tabs;
-                        // i += tabs;
-                        // len += tabs;
-                    }
-                    else if (line[i] === ')') {
-                        --expFuncPhar;
-                        // if (i === 0) {
-                        //     line = insertAt(line, makeTabs(tabs), i);
-                        //     i += tabs;
-                        //     len += tabs;
-                        // }
-                        if (expFuncPhar == 0 && line.substring(i).indexOf('{') !== -1 && line.substring(i).indexOf(';') > line.substring(i).indexOf('{')) {
-                            while (line[++i] != '{');
-                            --i;
-                        }
-                        else if (line[i + 1] == ';') {
-                            lastWasntInstr = true;
-                            ++i;
-                        }
-                    }
-                }
-                else if (expPhar > 0 && expFuncPhar === 0) {
-                    if (line[i] === '(') {
-                        ++expPhar;
-                    }
-                    else if (line[i] === ')') {
-                        --expPhar;
-                        if (expPhar === 0) {
-                            ++handledConditional;
-                        }
-                    }
-                }
-                ++i;
-            }
-            return {
-                "line": line,
-                "tabs": tabs,
-                "handledConditional": handledConditional,
-                "preservedConditional": preservedConditional,
-                "expPhar": expPhar,
-                "expFuncPhar": expFuncPhar
-            };
-        }
-        function spacing(line: string) {
-            let doubleSpace = ['+', '-', '*', ':', '/', '=', '<', '>', "+=", "-=", '*=', "/=", "==", "<=", ">="];
-            let singleSpace = [';', ',', '.', "++", "--"];
-            for (var symbol of doubleSpace) {
-                let index = getPosition(line, symbol, 1);
-                let i = 1;
-                while (index !== -1 && index < line.length) {
-                    if ((index > 0 && doubleSpace.includes(line.substring(index - 1, index + symbol.length))) || doubleSpace.includes(line.substring(index, index + 1 + symbol.length)) ||
-                        (index > 0 && singleSpace.includes(line.substring(index - 1, index + symbol.length))) || singleSpace.includes(line.substring(index, index + 1 + symbol.length))) {
-                        index = getPosition(line, symbol, ++i);
-                        continue;
-                    }
-                    if (index > 0) {
-                        if (line[index - 1] !== ' ') {
-                            line = insertAt(line, ' ', index);
-                            ++index;
-                        }
-                    }
-                    if (line[index + symbol.length] !== ' ') {
-                        line = insertAt(line, ' ', index + symbol.length);
-                    }
-                    index = getPosition(line, symbol, ++i);
-                }
-            }
-            for (var symbol of singleSpace) {
-                let index = getPosition(line, symbol, 1);
-                let i = 1;
-                while (index !== -1 && index < line.length) {
-                    if ((index > 0 && doubleSpace.includes(line.substring(index - 1, index + 1))) || doubleSpace.includes(line.substring(index, index + 2)) ||
-                        (index > 0 && singleSpace.includes(line.substring(index - 1, index + 1))) || singleSpace.includes(line.substring(index, index + 2))) {
-                        index = getPosition(line, symbol, ++i);
-                        continue;
-                    }
-                    if (index > 0) {
-                        if (line[index - 1] === ' ') {
-                            line = deleteAt(line, index - 1);
-                        }
-                    }
-                    if (line[index + symbol.length] !== ' ' && line[index + symbol.length] !== '\n' && line[index + symbol.length] !== '\t') {
-                        line = insertAt(line, ' ', index + symbol.length);
-                    }
-                    index = getPosition(line, symbol, ++i);
-                }
-            }
-            return line;
-        }
+//                         if (line.substring(i).startsWith('foreach')) {
+//                             if (line.substring(i).indexOf(';') > -1 && (line.substring(i).indexOf('{') === -1 || line.substring(i).indexOf(';') < line.substring(i).indexOf('{'))) {
+//                                 i += line.substring(i).indexOf(';');
+//                             }
+//                             else {
+//                                 i += line.substring(i).indexOf('{');
+//                                 --i;
+//                             }
+//                         }
+//                         else if (conditional(line.substring(i))) {
+//                             ++tabs;
+//                             if (conditionalWithPhar(line.substring(i))) {
+//                                 i += line.substring(i).indexOf('(');
+//                                 ++expPhar;
+//                             }
+//                             else {
+//                                 ++handledConditional;
+//                             }
+//                         }
+//                         else {
+//                             if (handledConditional > 0) {
+//                                 --tabs;
+//                                 --handledConditional;
+//                             }
+//                             if (isFunction(line, i)) {
+//                                 i += line.substring(i).indexOf('(');
+//                                 ++expFuncPhar;
+//                             }
+//                             else {
+//                                 i += line.substring(i).indexOf(';');
+//                             }
+//                         }
+//                     }
+//                 }
+//                 else if (expPhar === 0 && expFuncPhar > 0) {
+//                     if (line[i] === '(') {
+//                         ++expFuncPhar;
+//                         // line = insertAt(line, '\n' + makeTabs(tabs), i);
+//                         // ++tabs;
+//                         // i += tabs;
+//                         // len += tabs;
+//                     }
+//                     else if (line[i] === ')') {
+//                         --expFuncPhar;
+//                         // if (i === 0) {
+//                         //     line = insertAt(line, makeTabs(tabs), i);
+//                         //     i += tabs;
+//                         //     len += tabs;
+//                         // }
+//                         if (expFuncPhar == 0 && line.substring(i).indexOf('{') !== -1 && line.substring(i).indexOf(';') > line.substring(i).indexOf('{')) {
+//                             while (line[++i] != '{');
+//                             --i;
+//                         }
+//                         else if (line[i + 1] == ';') {
+//                             lastWasntInstr = true;
+//                             ++i;
+//                         }
+//                     }
+//                 }
+//                 else if (expPhar > 0 && expFuncPhar === 0) {
+//                     if (line[i] === '(') {
+//                         ++expPhar;
+//                     }
+//                     else if (line[i] === ')') {
+//                         --expPhar;
+//                         if (expPhar === 0) {
+//                             ++handledConditional;
+//                         }
+//                     }
+//                 }
+//                 ++i;
+//             }
+//             return {
+//                 "line": line,
+//                 "tabs": tabs,
+//                 "handledConditional": handledConditional,
+//                 "preservedConditional": preservedConditional,
+//                 "expPhar": expPhar,
+//                 "expFuncPhar": expFuncPhar
+//             };
+//         }
+//         function inString(line: string, index: number) {
+//             let noLeft = 0;
+//             let noRight = 0;
 
-        const linesNo = document.lineCount;
-        let operations: vscode.TextEdit[] = [];
-        let tabs = 0;
-        let handledConditional = 0;
-        let preservedConditional = 0;
-        let expPhar = 0;
-        let expFuncPhar = 0;
-        let lineArr: string[] = [];
-        for (let i = 0; i < linesNo; ++i) {
-            lineArr.push(document.lineAt(i).text);
-            //     let thisLine = document.lineAt(i).text;
+//             for (let i = 0; i < line.length; ++i) {
+//                 if (line[i] === '"') {
+//                     if (i < index) {
+//                         ++noLeft;
+//                     }
+//                     else {
+//                         ++noRight;
+//                     }
+//                 }
+//             }
 
-            //     let result = handleBlock(thisLine, tabs, handledConditional, preservedConditional, expPhar, expFuncPhar);
-            //     thisLine = result["line"];
-            //     handledConditional = result["handledConditional"];
-            //     preservedConditional = result["preservedConditional"];
-            //     expPhar = result["expPhar"];
-            //     expFuncPhar = result["expFuncPhar"];
+//             return noLeft % 2 == 1 && noRight % 2 == 1;
+//         }
+//         function spacing(line: string) {
+//             let doubleSpace = ['+', '-', '*', ':', '/', '=', '<', '>', "+=", "-=", '*=', "/=", "==", "<=", ">="];
+//             let singleSpace = [';', ',', '.', "++", "--"];
+//             for (var symbol of doubleSpace) {
+//                 let index = getPosition(line, symbol, 1);
+//                 let i = 1;
+//                 while (index !== -1 && index < line.length) {
+//                     if (!inString(line, index)) {
+//                         if ((index > 0 && doubleSpace.includes(line.substring(index - 1, index + symbol.length))) || doubleSpace.includes(line.substring(index, index + 1 + symbol.length)) ||
+//                             (index > 0 && singleSpace.includes(line.substring(index - 1, index + symbol.length))) || singleSpace.includes(line.substring(index, index + 1 + symbol.length))) {
+//                             index = getPosition(line, symbol, ++i);
+//                             continue;
+//                         }
+//                         if (index > 0) {
+//                             if (line[index - 1] !== ' ') {
+//                                 line = insertAt(line, ' ', index);
+//                                 ++index;
+//                             }
+//                         }
+//                         if (line[index + symbol.length] !== ' ') {
+//                             line = insertAt(line, ' ', index + symbol.length);
+//                         }
+//                     }
+//                     index = getPosition(line, symbol, ++i);
+//                 }
+//             }
+//             for (var symbol of singleSpace) {
+//                 let index = getPosition(line, symbol, 1);
+//                 let i = 1;
+//                 while (index !== -1 && index < line.length) {
+//                     if ((index > 0 && doubleSpace.includes(line.substring(index - 1, index + 1))) || doubleSpace.includes(line.substring(index, index + 2)) ||
+//                         (index > 0 && singleSpace.includes(line.substring(index - 1, index + 1))) || singleSpace.includes(line.substring(index, index + 2))) {
+//                         index = getPosition(line, symbol, ++i);
+//                         continue;
+//                     }
+//                     if (index > 0) {
+//                         if (line[index - 1] === ' ') {
+//                             line = deleteAt(line, index - 1);
+//                         }
+//                     }
+//                     if (line[index + symbol.length] !== ' ' && line[index + symbol.length] !== '\n' && line[index + symbol.length] !== '\t') {
+//                         line = insertAt(line, ' ', index + symbol.length);
+//                     }
+//                     index = getPosition(line, symbol, ++i);
+//                 }
+//             }
+//             return line;
+//         }
 
-            //     operations.push(vscode.TextEdit.replace(document.lineAt(i).range, thisLine.replace('\n', '')));
+//         const linesNo = document.lineCount;
+//         let operations: vscode.TextEdit[] = [];
+//         let tabs = 0;
+//         let handledConditional = 0;
+//         let preservedConditional = 0;
+//         let expPhar = 0;
+//         let expFuncPhar = 0;
+//         let lineArr: string[] = [];
+//         for (let i = 0; i < linesNo; ++i) {
+//             lineArr.push(document.lineAt(i).text);
+//             //     let thisLine = document.lineAt(i).text;
 
-            //     tabs = result["tabs"];
-            //    operations.push(vscode.TextEdit.delete(document.lineAt(i).range));
-        }
-        operations.push({
-            newText: '',
-            range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(linesNo + 1, 0))
-        });
-        //writeFileSync(document.uri.fsPath, '', {flag: 'w'});
+//             //     let result = handleBlock(thisLine, tabs, handledConditional, preservedConditional, expPhar, expFuncPhar);
+//             //     thisLine = result["line"];
+//             //     handledConditional = result["handledConditional"];
+//             //     preservedConditional = result["preservedConditional"];
+//             //     expPhar = result["expPhar"];
+//             //     expFuncPhar = result["expFuncPhar"];
 
-        let superLine = lineArr.join(" ");
-        superLine = handleBlock(superLine, 0, 0, 0, 0, 0)["line"];
-        superLine = spacing(superLine);
-        operations.push(vscode.TextEdit.insert(document.lineAt(0).range.start, superLine));
-        return operations;
-    }
-});
+//             //     operations.push(vscode.TextEdit.replace(document.lineAt(i).range, thisLine.replace('\n', '')));
+
+//             //     tabs = result["tabs"];
+//             //    operations.push(vscode.TextEdit.delete(document.lineAt(i).range));
+//         }
+//         operations.push({
+//             newText: '',
+//             range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(linesNo + 1, 0))
+//         });
+//         //writeFileSync(document.uri.fsPath, '', {flag: 'w'});
+
+//         let superLine = lineArr.join(" ");
+//         superLine = handleBlock(superLine, 0, 0, 0, 0, 0)["line"];
+//         superLine = spacing(superLine);
+//         if (superLine[0] == '\n') {
+//             superLine = superLine.substring(1);
+//         }
+//         operations.push(vscode.TextEdit.insert(document.lineAt(0).range.start, superLine));
+//         return operations;
+//     }
+// });
