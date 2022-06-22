@@ -105,7 +105,11 @@ export class AlkDebugSession extends LoggingDebugSession
 		});
 		this._runtime.on('end', () => {
 			console.log("End");
-			this.sendEvent(new TerminatedEvent());
+			setTimeout(() => {
+				this._runtime.printAll();
+				this.sendEvent(new TerminatedEvent());
+			}, 100);
+			
 		});
         this._alkPath = alkPath;
     }
