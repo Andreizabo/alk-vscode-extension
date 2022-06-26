@@ -824,8 +824,8 @@ function inString(line: string, index: number) {
     return noLeft % 2 == 1 && noRight % 2 == 1;
 }
 function spacing(line: string) {
-    let doubleSpace = ['+', '-', '*', ':', '/', '=', '<', '>', "+=", "-=", '*=', "/=", "==", "<=", ">="];
-    let singleSpace = [';', ',', '.', "++", "--"];
+    let doubleSpace = ['+', '-', '*', ':', '/', '=', '<', '>', "+=", "-=", '*=', "/=", "==", "<=", ">=", "!="];
+    let singleSpace = [';', ',', "++", "--"];
     for (var symbol of doubleSpace) {
         let index = getPosition(line, symbol, 1);
         let i = 1;
