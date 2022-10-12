@@ -121,6 +121,11 @@
                         "type": "string"
                     },
                     "order": 3
+                },
+                "alk.symbolicExecution": {
+                    "type": "boolean",
+                    "description": "This must be checked to enable symbolic execution.",
+                    "default": false
                 }
             }
         },

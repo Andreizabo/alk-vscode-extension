@@ -29,6 +29,10 @@ export function getOptionsString(exhaustive: boolean)
     {
         options += `-p ${vscode.workspace.getConfiguration('alk').get('precision')} `;
     }
+    if (vscode.workspace.getConfiguration('alk').get('symbolicExecution'))
+    {
+        options += '-s -smt="Z3" ';
+    }
     if (exhaustive)
     {
         options += '-e ';
