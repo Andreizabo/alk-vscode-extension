@@ -323,6 +323,7 @@ async function downloadAlk(version: string, alkPath: any) {
     await fs.createReadStream(tmpArchive).pipe(unzipper.Extract({ path: tmpFolder })).on('close', async function () {
         // Delete old alk folder
         try {
+            await client.stop();
             await del(alkPath, { force: true });
             console.log(`Old alk folder deleted!`);
             await fs.mkdir(alkPath, async function (err: any) {
@@ -404,6 +405,7 @@ async function downloadAlk(version: string, alkPath: any) {
                     );
                 }
             });
+            await client.start();
         } catch (err) {
             console.error(`Error while deleting old alk folder. ${err}`);
         }
