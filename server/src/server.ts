@@ -45,57 +45,7 @@ let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
 let hasDiagnosticRelatedInformationCapability = false;
 
-// function communicateWithServer(context: String, command: String): Promise<String> {
-// 	let client = new Socket();
-// 	client.connect(7979, '127.0.0.1', function() {
-// 		client.write(context + ' ' + command);
-// 	});
-// 	return new Promise((resolve: any, reject: any) => {
-// 		let count = 0;
-// 		let expected = -1;
-// 		let result = "";
-// 		client.on('data', function(data) {
-// 			let got = data.toString().split('\n');
-// 			got.pop();
-// 			let start = 0;
-// 			if(expected == -1) {
-// 				expected = parseInt(got[0]);
-// 				result += (got[0] + '\n');
-// 				start = 1;
-// 			}
-// 			for(let i = start; i < got.length; ++i) {
-// 				result += (got[i] + '\n');
-// 				++count;
-// 			}
-// 			if(count == expected) {
-// 				client.end();
-// 				resolve(result);
-// 			}
-// 		});
-// 	});
-// }
-
-// function getCoords(text: String, line: number, index: number): number[] {
-// 	try {
-// 		let starting: number = 0;
-// 		let lines = text.split('\r\n');
-// 		for(let i = 0; i < line - 1; ++i) {
-// 			starting += (lines[i].length + 2);
-// 		}
-// 		starting += index;
-// 		return [starting, starting];
-// 	}
-// 	catch {
-// 		return [0, 0];
-// 	}
-// }
-
-// function makeText(text: String): String {
-// 	return text.split('\n').join('`').split('\r').join('~');
-// }
-
 connection.onInitialize((params: InitializeParams) => {
-    console.log("test");
     if (os.type() === 'Windows_NT')
     {
         serverComm.start(__dirname + "\\..\\..\\media\\alk\\alkls.bat");
@@ -147,16 +97,20 @@ connection.onInitialize((params: InitializeParams) => {
 });
 
 connection.onInitialized(() => {
-    console.log("test2");
-	if (hasConfigurationCapability) {
-		// Register for all configuration changes.
-		connection.client.register(DidChangeConfigurationNotification.type, undefined);
-	}
-	if (hasWorkspaceFolderCapability) {
-		connection.workspace.onDidChangeWorkspaceFolders(_event => {
-			connection.console.log('Workspace folder change event received.');
-		});
-	}
+    try {
+        if (hasConfigurationCapability) {
+            // Register for all configuration changes.
+            connection.client.register(DidChangeConfigurationNotification.type, undefined);
+        }
+        if (hasWorkspaceFolderCapability) {
+            connection.workspace.onDidChangeWorkspaceFolders(_event => {
+                connection.console.log('Workspace folder change event received.');
+            });
+        }
+    }
+    catch (e) {
+        // console.log(e);
+    }
 });
 
 // The example settings
@@ -174,39 +128,29 @@ let globalSettings: ExampleSettings = defaultSettings;
 const documentSettings: Map<string, Thenable<ExampleSettings>> = new Map();
 
 connection.onDidChangeConfiguration(change => {
-	if (hasConfigurationCapability) {
-		// Reset all cached document settings
-		documentSettings.clear();
-	} else {
-		globalSettings = <ExampleSettings>(
-			(change.settings.languageServerExample || defaultSettings)
-		);
-	}
-
-	// Revalidate all open text documents
-	//documents.all().forEach(validateTextDocument);
-    console.log("Config hello :)");
+    try {
+        if (hasConfigurationCapability) {
+            // Reset all cached document settings
+            documentSettings.clear();
+        } else {
+            globalSettings = <ExampleSettings>(
+                (change.settings.languageServerExample || defaultSettings)
+            );
+        }
+    }
+    catch (e) {
+        // console.log(e);
+    }
 });
-
-// function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
-// 	if (!hasConfigurationCapability) {
-// 		return Promise.resolve(globalSettings);
-// 	}
-// 	let result = documentSettings.get(resource);
-// 	if (!result) {
-// 		result = connection.workspace.getConfiguration({
-// 			scopeUri: resource,
-// 			section: 'languageServerExample'
-// 		});
-// 		documentSettings.set(resource, result);
-// 	}
-// 	return result;
-// }
 
 // Only keep settings for open documents
 documents.onDidClose(e => {
-    console.log("bye");
-	documentSettings.delete(e.document.uri);
+    try {
+	    documentSettings.delete(e.document.uri);
+    }
+    catch (e) {
+        // console.log(e);
+    }
 });
 
 
@@ -217,113 +161,112 @@ let cachedErrs : number = 0;
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent(async change => {
-    let url = require('url');
+    try {
+        let url = require('url');
 
-    cachedDoc = change.document.getText();
+        cachedDoc = change.document.getText();
 
-    if (cachedDoc.trim().length > 0) {
-        cachedDocPath = url.fileURLToPath(change.document.uri);
+        if (cachedDoc.trim().length > 0) {
+            cachedDocPath = url.fileURLToPath(change.document.uri);
 
-        let args = cachedDoc.split('\n').map(x => x + '\n');
-        args.unshift(cachedDoc.split('\n').length + '\n');
-        var result = await serverComm.writeCommand('load ' + url.fileURLToPath(change.document.uri) + '\n', args);
-        validateTextDocument(result, change.document);
+            let args = cachedDoc.split('\n').map(x => x + '\n');
+            args.unshift(cachedDoc.split('\n').length + '\n');
+            var result = await serverComm.writeCommand('load ' + url.fileURLToPath(change.document.uri) + '\n', args);
+            validateTextDocument(result, change.document);
+        }
     }
-    console.log('Hello');
+    catch (e) {
+        // console.log(e);
+    }
 });
 
 async function validateTextDocument(errrs: string[], textDocument: TextDocument): Promise<void> {
-	// In this simple example we get the settings for every validate run.
-	//const settings = await getDocumentSettings(textDocument.uri);
+    try {
+        let problems = 0;
+        const diagnostics: Diagnostic[] = [];	
+        
+        errrs.pop();	
 
-	let problems = 0;
-	const diagnostics: Diagnostic[] = [];	
-	
-	errrs.pop();	
-
-	for(let i = 0; i < errrs.length && problems < 2000; ++i) {
-        if (!errrs[i].includes(':') || !errrs[i].includes(' ')) {
-            continue;
-        }
-		++problems;
-		const line = parseInt(errrs[i].split(':')[0].trim());
-        const afterPt = errrs[i].split(':')[1].trim().split(' ');
-        const chr = parseInt(afterPt[0].trim());
-        afterPt.shift();
-        const msg = afterPt.join(' ').trim();
-		const diagnostic: Diagnostic = {
-			severity: DiagnosticSeverity.Error,
-			range: {
-				start: {
-                    line: line - 1,
-                    character: 0
+        for(let i = 0; i < errrs.length && problems < 2000; ++i) {
+            if (!errrs[i].includes(':') || !errrs[i].includes(' ')) {
+                continue;
+            }
+            ++problems;
+            const line = parseInt(errrs[i].split(':')[0].trim());
+            const afterPt = errrs[i].split(':')[1].trim().split(' ');
+            const chr = parseInt(afterPt[0].trim());
+            afterPt.shift();
+            const msg = afterPt.join(' ').trim();
+            const diagnostic: Diagnostic = {
+                severity: DiagnosticSeverity.Error,
+                range: {
+                    start: {
+                        line: line - 1,
+                        character: 0
+                    },
+                    end: {
+                        line: line - 1,
+                        character: readDocLine(line - 1).length
+                    }
                 },
-				end: {
-                    line: line - 1,
-                    character: readDocLine(line - 1).length
-                }
-			},
-			message: errrs[i],
-			source: 'Alk'
-		};
-		diagnostics.push(diagnostic);
-	}
-    cachedErrs = diagnostics.length;
-	connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
+                message: errrs[i],
+                source: 'Alk'
+            };
+            diagnostics.push(diagnostic);
+        }
+        cachedErrs = diagnostics.length;
+        connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
+    }
+    catch (e) {
+        // console.log(e);
+    }
 }
-
-connection.onDidChangeWatchedFiles(_change => {
-	// Monitored files have change in VSCode
-	connection.console.log('We received an file change event');
-});
 
 // This handler provides the initial list of the completion items.
 connection.onCompletion(async (completionParams): Promise<CompletionItem[]> => {
-		const result = await serverComm.writeCommand('all-symbols ' + (completionParams.position.line + 1) + "\n");
+    const result = await serverComm.writeCommand('all-symbols ' + (completionParams.position.line + 1) + "\n");
 
-        result.shift();
+    result.shift();
 
-		const autoc = [];
+    const autoc = [];
 
-		for(let i = 0; i < result.length; ++i) {
-            const varname = result[i].replace('\n', '').replace('\r', '');
-            const res = await serverComm.writeCommand('function ' + varname + '\n');
+    for(let i = 0; i < result.length; ++i) {
+        const varname = result[i].replace('\n', '').replace('\r', '');
+        const res = await serverComm.writeCommand('function ' + varname + '\n');
 
-            if (!res[0].startsWith('No function')) {
-                autoc.push({
-                    label: varname,
-                    kind: CompletionItemKind.Function,
-                    data: i + 2
-                });
-            }
-			else {
-                autoc.push({
-                    label: varname,
-                    kind: CompletionItemKind.Variable,
-                    data: i + 2
-                });
-            }
-		}
+        if (!res[0].startsWith('No function')) {
+            autoc.push({
+                label: varname,
+                kind: CompletionItemKind.Function,
+                data: i + 2
+            });
+        }
+        else {
+            autoc.push({
+                label: varname,
+                kind: CompletionItemKind.Variable,
+                data: i + 2
+            });
+        }
+    }
 
-		return autoc;
-	}
-);
+    return autoc;
+});
 
 // This handler resolves additional information for the item selected in
 // the completion list.
 connection.onCompletionResolve(async (item: CompletionItem): Promise<CompletionItem> => {
-		const varname = item.label;
+    const varname = item.label;
 
-        const result = await serverComm.writeCommand('function ' + varname + '\n');
-        const func_sign = result[0].replace('\r', '').replace('\n', '');
+    const result = await serverComm.writeCommand('function ' + varname + '\n');
+    const func_sign = result[0].replace('\r', '').replace('\n', '');
 
-        if (!result[0].startsWith('No function')) {
-            item.detail = func_sign;
-        }
+    if (!result[0].startsWith('No function')) {
+        item.detail = func_sign;
+    }
 
-		return item;
-	}
-);
+    return item;
+});
 
 
 
@@ -337,64 +280,69 @@ connection.onCompletionResolve(async (item: CompletionItem): Promise<CompletionI
 let last_function: any[] = [];
 
 connection.onSignatureHelp(async (signatureHelpParms): Promise<any>  => {
-    const line = signatureHelpParms.position.line;
-    const character = signatureHelpParms.position.character;
-    let noCommas = 0;
-    let noPars = 0;
-    let func_index = 0;
+    try {
+        const line = signatureHelpParms.position.line;
+        const character = signatureHelpParms.position.character;
+        let noCommas = 0;
+        let noPars = 0;
+        let func_index = 0;
 
-    let ln = readDocLine(line);
+        let ln = readDocLine(line);
 
-    for (let i = character - 1; i >= 0; --i) {
-        if (ln[i] == '(') {
-            if (noPars == 0) {
-                func_index = i;
-                break;
+        for (let i = character - 1; i >= 0; --i) {
+            if (ln[i] == '(') {
+                if (noPars == 0) {
+                    func_index = i;
+                    break;
+                }
+                else {
+                    --noPars;
+                }
             }
-            else {
-                --noPars;
+            if (ln[i] == ')') {
+                ++noPars;
+            }
+            if (noPars == 0 && ln[i] == ',') {
+                ++noCommas;
             }
         }
-        if (ln[i] == ')') {
-            ++noPars;
+
+        while ([' ', '\t'].includes(ln[func_index--]));
+
+        const func_name = readWordBefore(ln, func_index, true);
+
+        if (func_name.length == 0 || ['if', 'while', 'else', 'for', 'repeat', 'foreach', 'forall', 'do'].includes(func_name.trim())) {
+            return null;
         }
-        if (noPars == 0 && ln[i] == ',') {
-            ++noCommas;
+
+        const result = await serverComm.writeCommand('function ' + func_name + '\n');
+
+        if (result[0].startsWith('No function')) {
+            return null;
+        }
+
+        const func_sign = result[0].replace('\r', '').replace('\n', '');
+
+        const pars = [];
+        const unparsed = func_sign.split('(')[1].replace(')', '').replace(' ', '').replace('\t', '').split(',');
+        for (let i = 0; i < unparsed.length; ++i) {
+            pars.push({
+                label: unparsed[i]
+            })
+        }
+
+        return {
+            signatures: [
+                {
+                    label: func_sign, 
+                    parameters: pars,
+                    activeParameter: noCommas
+                }
+            ]
         }
     }
-
-    while ([' ', '\t'].includes(ln[func_index--]));
-
-    const func_name = readWordBefore(ln, func_index, true);
-
-    if (func_name.length == 0 || ['if', 'while', 'else', 'for', 'repeat', 'foreach', 'forall', 'do'].includes(func_name.trim())) {
-        return null;
-    }
-
-    const result = await serverComm.writeCommand('function ' + func_name + '\n');
-
-    if (result[0].startsWith('No function')) {
-        return null;
-    }
-
-    const func_sign = result[0].replace('\r', '').replace('\n', '');
-
-    const pars = [];
-    const unparsed = func_sign.split('(')[1].replace(')', '').replace(' ', '').replace('\t', '').split(',');
-    for (let i = 0; i < unparsed.length; ++i) {
-        pars.push({
-            label: unparsed[i]
-        })
-    }
-
-    return {
-        signatures: [
-            {
-                label: func_sign, 
-                parameters: pars,
-                activeParameter: noCommas
-            }
-        ]
+    catch (e) {
+        // console.log(e);
     }
 });
 
@@ -451,54 +399,59 @@ function readDocLine(line: number) {
 
 // AICI VSCODE NE DA POSITION.CHARACTER CA 0 IN LOC DE 1 :)
 connection.onDefinition(async (definitionParams): Promise<any> => {
-    const docLine = readDocLine(definitionParams.position.line);
+    try {
+        const docLine = readDocLine(definitionParams.position.line);
 
-    if (!letters.includes(docLine[definitionParams.position.character])) {
-        if (definitionParams.position.character > 0 && !letters.includes(docLine[definitionParams.position.character - 1])) {
-            return null;
-        }
-        else {
-            --definitionParams.position.character;
-        }
-    }
-
-    const varname = readWord(docLine, definitionParams.position.character - 1);
-
-    let isFunc = false;
-    
-    for (let i = definitionParams.position.character + readWordAfter(docLine, definitionParams.position.character-1).length; i < docLine.length; ++i) {
-        if (docLine[i] == ' ' || docLine[i] == '\t') {
-            continue;
-        }
-        if (docLine[i] == '(') {
-            isFunc = true;
-        }
-        else {
-            break;
-        }
-    }
-
-    let result = [];
-
-    if (isFunc) {
-        result = await serverComm.writeCommand('where-f ' + varname + '\n');
-    }
-    else {
-        result = await serverComm.writeCommand('where-v ' + definitionParams.position.line + ' ' + varname + '\n');
-    }
-
-    return {
-        uri: definitionParams.textDocument.uri,
-        range: {
-            start: {
-                line: parseInt(result[0]) - 1,
-                character: 0
-            },
-            end: {
-                line: parseInt(result[0]) - 1,
-                character: getNameOfDefinition(parseInt(result[0]) - 1).length
+        if (!letters.includes(docLine[definitionParams.position.character])) {
+            if (definitionParams.position.character > 0 && !letters.includes(docLine[definitionParams.position.character - 1])) {
+                return null;
+            }
+            else {
+                --definitionParams.position.character;
             }
         }
+
+        const varname = readWord(docLine, definitionParams.position.character - 1);
+
+        let isFunc = false;
+        
+        for (let i = definitionParams.position.character + readWordAfter(docLine, definitionParams.position.character-1).length; i < docLine.length; ++i) {
+            if (docLine[i] == ' ' || docLine[i] == '\t') {
+                continue;
+            }
+            if (docLine[i] == '(' && !['if', 'while', 'else', 'for', 'repeat', 'foreach', 'forall', 'do'].includes(varname)) {
+                isFunc = true;
+            }
+            else {
+                break;
+            }
+        }
+
+        let result = [];
+
+        if (isFunc) {
+            result = await serverComm.writeCommand('where-f ' + varname + '\n');
+        }
+        else {
+            result = await serverComm.writeCommand('where-v ' + definitionParams.position.line + ' ' + varname + '\n');
+        }
+
+        return {
+            uri: definitionParams.textDocument.uri,
+            range: {
+                start: {
+                    line: parseInt(result[0]) - 1,
+                    character: 0
+                },
+                end: {
+                    line: parseInt(result[0]) - 1,
+                    character: getNameOfDefinition(parseInt(result[0]) - 1).length
+                }
+            }
+        }
+    }
+    catch (e) {
+        // console.log(e);
     }
 });
 
@@ -519,46 +472,51 @@ function getNameOfDefinition(line: number) {
 // HOVER
 
 connection.onHover(async (hoverParams): Promise<any> => {
-    const docLine = readDocLine(hoverParams.position.line);
+    try {
+        const docLine = readDocLine(hoverParams.position.line);
 
-    if (!letters.includes(docLine[hoverParams.position.character])) {
-        if (hoverParams.position.character > 0 && !letters.includes(docLine[hoverParams.position.character - 1])) {
-            return null;
-        }
-        else {
-            --hoverParams.position.character;
-        }
-    }
-
-    const varname = readWord(docLine, hoverParams.position.character - 1);
-
-    let isFunc = false;
-    
-    for (let i = hoverParams.position.character + readWordAfter(docLine, hoverParams.position.character-1).length; i < docLine.length; ++i) {
-        if (docLine[i] == ' ' || docLine[i] == '\t') {
-            continue;
-        }
-        if (docLine[i] == '(') {
-            isFunc = true;
-        }
-        else {
-            break;
-        }
-    }
-
-    if (isFunc) {
-        const result = await serverComm.writeCommand('function ' + varname + '\n');
-        const func_sign = result[0].replace('\r', '').replace('\n', '')
-
-        return {
-            contents: {
-                language: "java",
-                value: func_sign
+        if (!letters.includes(docLine[hoverParams.position.character])) {
+            if (hoverParams.position.character > 0 && !letters.includes(docLine[hoverParams.position.character - 1])) {
+                return null;
+            }
+            else {
+                --hoverParams.position.character;
             }
         }
+
+        const varname = readWord(docLine, hoverParams.position.character - 1);
+
+        let isFunc = false;
+        
+        for (let i = hoverParams.position.character + readWordAfter(docLine, hoverParams.position.character-1).length; i < docLine.length; ++i) {
+            if (docLine[i] == ' ' || docLine[i] == '\t') {
+                continue;
+            }
+            if (docLine[i] == '(' && !['if', 'while', 'else', 'for', 'repeat', 'foreach', 'forall', 'do'].includes(varname)) {
+                isFunc = true;
+            }
+            else {
+                break;
+            }
+        }
+
+        if (isFunc) {
+            const result = await serverComm.writeCommand('function ' + varname + '\n');
+            const func_sign = result[0].replace('\r', '').replace('\n', '')
+
+            return {
+                contents: {
+                    language: "java",
+                    value: func_sign
+                }
+            }
+        }
+        else {
+            return null;
+        }
     }
-    else {
-        return null;
+    catch (e) {
+        // console.log(e);
     }
 });
 
@@ -567,57 +525,62 @@ connection.onHover(async (hoverParams): Promise<any> => {
 // FIND ALL REFERENCES
 
 connection.onReferences(async (referenceParams): Promise<any> => {
-    const docLine = readDocLine(referenceParams.position.line);
+    try {
+        const docLine = readDocLine(referenceParams.position.line);
 
-    if (!letters.includes(docLine[referenceParams.position.character])) {
-        if (referenceParams.position.character > 0 && !letters.includes(docLine[referenceParams.position.character - 1])) {
-            return null;
-        }
-        else {
-            --referenceParams.position.character;
-        }
-    }
-
-    const varname = readWord(docLine, referenceParams.position.character - 1);
-
-    let isFunc = false;
-    
-    for (let i = referenceParams.position.character + readWordAfter(docLine, referenceParams.position.character-1).length; i < docLine.length; ++i) {
-        if (docLine[i] == ' ' || docLine[i] == '\t') {
-            continue;
-        }
-        if (docLine[i] == '(') {
-            isFunc = true;
-        }
-        else {
-            break;
-        }
-    }
-
-    const result = await serverComm.writeCommand('all-references ' + (referenceParams.position.line + 1) + ' ' + varname + (isFunc ? ' 1' : '') + '\n');
-
-    result.shift();
-
-    const ret = []
-
-    for (let i = 0; i < result.length; ++i) {
-        const line = result[i].split(' ');
-        ret.push({
-            uri: referenceParams.textDocument.uri,
-            range: {
-                start: {
-                    line: parseInt(line[0]) - 1,
-                    character: parseInt(line[1])
-                },
-                end: {
-                    line: parseInt(line[0]) - 1,
-                    character: parseInt(line[1]) + varname.length
-                }
+        if (!letters.includes(docLine[referenceParams.position.character])) {
+            if (referenceParams.position.character > 0 && !letters.includes(docLine[referenceParams.position.character - 1])) {
+                return null;
             }
-        });
-    }
+            else {
+                --referenceParams.position.character;
+            }
+        }
 
-    return ret;
+        const varname = readWord(docLine, referenceParams.position.character - 1);
+
+        let isFunc = false;
+        
+        for (let i = referenceParams.position.character + readWordAfter(docLine, referenceParams.position.character-1).length; i < docLine.length; ++i) {
+            if (docLine[i] == ' ' || docLine[i] == '\t') {
+                continue;
+            }
+            if (docLine[i] == '(' && !['if', 'while', 'else', 'for', 'repeat', 'foreach', 'forall', 'do'].includes(varname)) {
+                isFunc = true;
+            }
+            else {
+                break;
+            }
+        }
+
+        const result = await serverComm.writeCommand('all-references ' + (referenceParams.position.line + 1) + ' ' + varname + (isFunc ? ' 1' : '') + '\n');
+
+        result.shift();
+
+        const ret = []
+
+        for (let i = 0; i < result.length; ++i) {
+            const line = result[i].split(' ');
+            ret.push({
+                uri: referenceParams.textDocument.uri,
+                range: {
+                    start: {
+                        line: parseInt(line[0]) - 1,
+                        character: parseInt(line[1])
+                    },
+                    end: {
+                        line: parseInt(line[0]) - 1,
+                        character: parseInt(line[1]) + varname.length
+                    }
+                }
+            });
+        }
+
+        return ret;
+    }
+    catch (e) {
+        // console.log(e);
+    }
 });
 
 // -----------------------------------------------------------------------------------------
