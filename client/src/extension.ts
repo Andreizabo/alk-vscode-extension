@@ -356,30 +356,46 @@ async function downloadAlk(version: string, alkPath: any) {
                                 } else {
                                     console.log("Successfully moved the bat!");
                                 }
-                                await mv(path.join(tmpFolder, `v${version}`, 'bin', 'lib'), path.join(alkPath, 'lib'), async function (err: any) {
+                                await mv(path.join(tmpFolder, `v${version}`, 'bin', 'alkls.sh'), path.join(alkPath, 'alkls.sh'), async function (err: any) {
                                     if (err) {
                                         console.log(`Error moving files. ${err}`);
                                     } else {
-                                        console.log("Successfully moved lib!");
+                                        console.log("Successfully moved the language server sh!");
                                     }
-                                    //Delete downloaded folder
-                                    try {
-                                        await del(tmpFolder);
-                                        console.log(`Folder deleted!`);
-                                    } catch (err) {
-                                        console.error(`Error while deleting folder. ${err}`);
-                                    }
-                                    // Delete downloaded archive
-                                    await fs.unlink(tmpArchive, (err: any) => {
+                                    await mv(path.join(tmpFolder, `v${version}`, 'bin', 'alkls.bat'), path.join(alkPath, 'alkls.bat'), async function (err: any) {
                                         if (err) {
-                                            console.error(`Error while deleting archive. ${err}`);
-                                            return;
+                                            console.log(`Error moving files. ${err}`);
+                                        } else {
+                                            console.log("Successfully moved the language server bat!");
                                         }
-                                        console.log('Archive deleted.');
-                                    });
-                                    console.log('Updated alk');
-                                    vscode.window.showInformationMessage(`Updated Alk to latest version (${version})`);
-                                });
+                                        await mv(path.join(tmpFolder, `v${version}`, 'bin', 'lib'), path.join(alkPath, 'lib'), async function (err: any) {
+                                            if (err) {
+                                                console.log(`Error moving files. ${err}`);
+                                            } else {
+                                                console.log("Successfully moved lib!");
+                                            }
+                                            //Delete downloaded folder
+                                            try {
+                                                await del(tmpFolder);
+                                                console.log(`Folder deleted!`);
+                                            } catch (err) {
+                                                console.error(`Error while deleting folder. ${err}`);
+                                            }
+                                            // Delete downloaded archive
+                                            await fs.unlink(tmpArchive, (err: any) => {
+                                                if (err) {
+                                                    console.error(`Error while deleting archive. ${err}`);
+                                                    return;
+                                                }
+                                                console.log('Archive deleted.');
+                                            });
+                                            console.log('Updated alk');
+                                            vscode.window.showInformationMessage(`Updated Alk to latest version (${version})`);
+                                        });
+                                    }
+                                    );
+                                }
+                                );
                             }
                             );
                         }
