@@ -13,8 +13,12 @@
 			"patterns": [
                 {
 				    "name": "keyword.control.alk",
-				    "match": "\\b(if|else|while|do|for|foreach|in|from|out|havoc|choose|uniform|repeat|return|success|until|failure|assert|assume|symbolic|invariant|forall|exists|continue|break)\\b"
+				    "match": "\\b(if|else|while|do|for|foreach|in|from|out|choose|uniform|repeat|return|success|until|failure|forall|exists|continue|break)\\b"
 			    },
+				{
+					"name": "keyword.assertions.alk",
+					"match": "@\\b(assert|assume|symbolic|invariant|requires|ensures|loopassert|modifies|havoc)\\b"
+				},
                 {
                     "name": "keyword.struct.alk",
 				    "match": "\\b(emptySet|emptyList|emptyStructure|array|set)\\b"

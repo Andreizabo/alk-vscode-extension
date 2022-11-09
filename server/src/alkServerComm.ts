@@ -61,11 +61,11 @@ export class AlkServerComm extends EventEmitter
             }
         });
         this._childProcess.on('close', (code: number) => {
-            console.log(`child process exited with code ${code}`);
+            // console.log(`child process exited with code ${code}`);
             this.sendEvent('end');
         });
         this._childProcess.on('error', (err: any) => {
-            console.log(err);
+            // console.log(err);
         });
         this._alkOutputLines = [];
     }
@@ -79,7 +79,7 @@ export class AlkServerComm extends EventEmitter
     {
         if (!this._childProcess)
         {
-            console.log(`Tried to run ${command} but language server is not active`);
+            // console.log(`Tried to run ${command} but language server is not active`);
             return [];
         }
         this._childProcess.stdin.write(command);
@@ -87,13 +87,13 @@ export class AlkServerComm extends EventEmitter
             this._childProcess.stdin.write(args[i]);
         }
         const trimmedCommand = command.trim();
-        console.log(`Command: ${command}`);
+        // console.log(`Command: ${command}`);
         await this.waitForCommand(trimmedCommand);
         let commandOutputArray = this._commandOutput.get(trimmedCommand) || [['???']];
         const commandOutput = commandOutputArray[0];
         commandOutputArray.shift();
 
-        console.log(`Command output: ${commandOutput}`);
+        // console.log(`Command output: ${commandOutput}`);
         return commandOutput;
     }
 
