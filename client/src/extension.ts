@@ -108,7 +108,7 @@ function replacePath(path: string) {
 
 let currentRunningProcess: ChildProcess | null = null;
 
-function runAlkFile(context: vscode.ExtensionContext, alkOutput: vscode.OutputChannel, javaInstalled: boolean, exhaustive = false) {
+function runAlkFile(context: vscode.ExtensionContext, alkOutput: vscode.OutputChannel, javaInstalled: boolean, exhaustive = false, symbolic = false) {
     console.log('runAlkFile');
     if (!javaInstalled) {
         displayJavaHelp(alkOutput);
@@ -140,7 +140,7 @@ function runAlkFile(context: vscode.ExtensionContext, alkOutput: vscode.OutputCh
             const alkRunScript = os.type() === 'Windows_NT' ? 'alki.bat' : 'alki.sh';
             const alkPath = path.join(context.extensionUri.fsPath, 'media', 'alk', alkRunScript);
 
-            const options = getOptionsString(exhaustive);
+            const options = getOptionsString(exhaustive, symbolic);
 
             const filePath = editor.document.uri.fsPath;
             const cp = require('child_process');
@@ -198,11 +198,11 @@ export function activate(context: vscode.ExtensionContext) {
     const alkOutput = vscode.window.createOutputChannel("Alk Output");
 
     let disposable = vscode.commands.registerCommand('alk.run', () => {
-        runAlkFile(context, alkOutput, javaInstalled, false);
+        runAlkFile(context, alkOutput, javaInstalled, false, false);
     });
 
     let exhaustiveDisposable = vscode.commands.registerCommand('alk.runExhaustive', () => {
-        runAlkFile(context, alkOutput, javaInstalled, true);
+        runAlkFile(context, alkOutput, javaInstalled, true, false);
     });
 
     let debugDisposable = vscode.commands.registerCommand('alk.runDebug', () => {
@@ -212,6 +212,10 @@ export function activate(context: vscode.ExtensionContext) {
             "name": "Debug Alk",
             "mainFile": "${command:GetActiveFile}"
         });
+    });
+
+    let symbolicDisposable = vscode.commands.registerCommand('alk.runSymbolic', () => {
+        runAlkFile(context, alkOutput, javaInstalled, false, true);
     });
 
     let stopDisposable = vscode.commands.registerCommand('alk.stop', () => {
@@ -246,6 +250,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(disposable);
     context.subscriptions.push(exhaustiveDisposable);
+    context.subscriptions.push(symbolicDisposable);
     context.subscriptions.push(debugDisposable);
     context.subscriptions.push(stopDisposable);
     context.subscriptions.push(optionsDisposable);

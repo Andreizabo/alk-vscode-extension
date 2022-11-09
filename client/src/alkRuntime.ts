@@ -45,7 +45,7 @@ export class AlkRuntime extends EventEmitter
     public async start(alkPath: string, mainFile: string): Promise<void>
     {
         this._mainFile = mainFile;
-        const options = getOptionsString(false);
+        const options = getOptionsString(false, false);
         let command = '', args = [];
         
         if (os.type() === 'Windows_NT')

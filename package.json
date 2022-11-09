@@ -45,15 +45,21 @@
             },
             {
                 "command": "alk.runExhaustive",
-                "title": "Run Alk Exhaustive",
+                "title": "Run Alk (Exhaustive)",
                 "category": "Alk",
-                "icon": "$(debug-alt)"
+                "icon": "$(run-all)"
             },
             {
                 "command": "alk.runDebug",
                 "title": "Debug Alk",
                 "category": "Alk",
                 "icon": "$(debug-alt)"
+            },
+            {
+                "command": "alk.runSymbolic",
+                "title": "Run Alk (Symbolic)",
+                "category": "Alk",
+                "icon": "$(list-tree)"
             },
             {
                 "command": "alk.stop",
@@ -121,11 +127,6 @@
                         "type": "string"
                     },
                     "order": 3
-                },
-                "alk.symbolicExecution": {
-                    "type": "boolean",
-                    "description": "This must be checked to enable symbolic execution.",
-                    "default": false
                 }
             }
         },
@@ -175,6 +176,11 @@
                 },
                 {
                     "when": "resourceLangId == alk && alk.canRun",
+                    "command": "alk.runSymbolic",
+                    "group": "z_commands"
+                },
+                {
+                    "when": "resourceLangId == alk && alk.canRun",
                     "command": "alk.runDebug",
                     "group": "z_commands"
                 },
@@ -205,6 +211,11 @@
                 {
                     "when": "resourceLangId == alk && alk.canRun",
                     "command": "alk.runExhaustive",
+                    "group": "z_commands"
+                },
+                {
+                    "when": "resourceLangId == alk && alk.canRun",
+                    "command": "alk.runSymbolic",
                     "group": "z_commands"
                 },
                 {

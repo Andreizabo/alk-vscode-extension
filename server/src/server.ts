@@ -259,10 +259,10 @@ connection.onCompletionResolve(async (item: CompletionItem): Promise<CompletionI
     const varname = item.label;
 
     const result = await serverComm.writeCommand('function ' + varname + '\n');
-    const func_sign = result[0].replace('\r', '').replace('\n', '');
+    const funcSign = result[0].replace('\r', '').replace('\n', '');
 
     if (!result[0].startsWith('No function')) {
-        item.detail = func_sign;
+        item.detail = funcSign;
     }
 
     return item;
@@ -321,10 +321,10 @@ connection.onSignatureHelp(async (signatureHelpParms): Promise<any>  => {
             return null;
         }
 
-        const func_sign = result[0].replace('\r', '').replace('\n', '');
+        const funcSign = result[0].replace('\r', '').replace('\n', '');
 
         const pars = [];
-        const unparsed = func_sign.split('(')[1].replace(')', '').replace(' ', '').replace('\t', '').split(',');
+        const unparsed = funcSign.split('(')[1].replace(')', '').replace(' ', '').replace('\t', '').split(',');
         for (let i = 0; i < unparsed.length; ++i) {
             pars.push({
                 label: unparsed[i]
@@ -334,7 +334,7 @@ connection.onSignatureHelp(async (signatureHelpParms): Promise<any>  => {
         return {
             signatures: [
                 {
-                    label: func_sign, 
+                    label: funcSign, 
                     parameters: pars,
                     activeParameter: noCommas
                 }
@@ -416,10 +416,10 @@ connection.onDefinition(async (definitionParams): Promise<any> => {
         let isFunc = false;
         
         for (let i = definitionParams.position.character + readWordAfter(docLine, definitionParams.position.character-1).length; i < docLine.length; ++i) {
-            if (docLine[i] == ' ' || docLine[i] == '\t') {
+            if (docLine[i] === ' ' || docLine[i] === '\t') {
                 continue;
             }
-            if (docLine[i] == '(' && !['if', 'while', 'else', 'for', 'repeat', 'foreach', 'forall', 'do'].includes(varname)) {
+            if (docLine[i] === '(' && !['if', 'while', 'else', 'for', 'repeat', 'foreach', 'forall', 'do'].includes(varname)) {
                 isFunc = true;
             }
             else {
@@ -489,10 +489,10 @@ connection.onHover(async (hoverParams): Promise<any> => {
         let isFunc = false;
         
         for (let i = hoverParams.position.character + readWordAfter(docLine, hoverParams.position.character-1).length; i < docLine.length; ++i) {
-            if (docLine[i] == ' ' || docLine[i] == '\t') {
+            if (docLine[i] === ' ' || docLine[i] === '\t') {
                 continue;
             }
-            if (docLine[i] == '(' && !['if', 'while', 'else', 'for', 'repeat', 'foreach', 'forall', 'do'].includes(varname)) {
+            if (docLine[i] === '(' && !['if', 'while', 'else', 'for', 'repeat', 'foreach', 'forall', 'do'].includes(varname)) {
                 isFunc = true;
             }
             else {
@@ -502,12 +502,12 @@ connection.onHover(async (hoverParams): Promise<any> => {
 
         if (isFunc) {
             const result = await serverComm.writeCommand('function ' + varname + '\n');
-            const func_sign = result[0].replace('\r', '').replace('\n', '')
+            const funcSign = result[0].replace('\r', '').replace('\n', '')
 
             return {
                 contents: {
                     language: "java",
-                    value: func_sign
+                    value: funcSign
                 }
             }
         }
@@ -542,10 +542,10 @@ connection.onReferences(async (referenceParams): Promise<any> => {
         let isFunc = false;
         
         for (let i = referenceParams.position.character + readWordAfter(docLine, referenceParams.position.character-1).length; i < docLine.length; ++i) {
-            if (docLine[i] == ' ' || docLine[i] == '\t') {
+            if (docLine[i] === ' ' || docLine[i] === '\t') {
                 continue;
             }
-            if (docLine[i] == '(' && !['if', 'while', 'else', 'for', 'repeat', 'foreach', 'forall', 'do'].includes(varname)) {
+            if (docLine[i] === '(' && !['if', 'while', 'else', 'for', 'repeat', 'foreach', 'forall', 'do'].includes(varname)) {
                 isFunc = true;
             }
             else {
