@@ -105,7 +105,11 @@ export class AlkDebugSession extends LoggingDebugSession
 		});
 		this._runtime.on('end', () => {
 			console.log("End");
-			this.sendEvent(new TerminatedEvent());
+			setTimeout(() => {
+				this._runtime.printAll();
+				this.sendEvent(new TerminatedEvent());
+			}, 100);
+			
 		});
         this._alkPath = alkPath;
     }
@@ -276,11 +280,11 @@ export class AlkDebugSession extends LoggingDebugSession
 		this.sendResponse(response);
 	}
 
-	// protected stepOutRequest(response: DebugProtocol.StepOutResponse, args: DebugProtocol.StepOutArguments): void 
-	// {
-	// 	// this._runtime.stepOut();
-	// 	this.sendResponse(response);
-	// }
+	protected stepOutRequest(response: DebugProtocol.StepOutResponse, args: DebugProtocol.StepOutArguments): void 
+	{
+		this._runtime.stepOut();
+		this.sendResponse(response);
+	}
 
 	protected async evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments): Promise<void> 
 	{

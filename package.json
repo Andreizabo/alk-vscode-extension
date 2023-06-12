@@ -3,7 +3,7 @@
     "displayName": "Alk Visual Studio Code Extension",
     "description": "",
     "publisher": "AlkUaic",
-    "version": "0.33.0",
+    "version": "0.41.0",
     "engines": {
         "vscode": "^1.62.0"
     },
@@ -22,7 +22,19 @@
         "onLanguage:alk",
         "onDebug"
     ],
-    "main": "./out/extension.js",
+    "configuration": {
+        "type": "object",
+        "title": "Server configuration",
+        "properties": {
+            "languageServerExample.maxNumberOfProblems": {
+                "scope": "resource",
+                "type": "number",
+                "default": 100,
+                "description": "Controls the maximum number of problems produced by the server."
+            }
+        }
+    },
+    "main": "./client/out/extension",
     "contributes": {
         "commands": [
             {
@@ -33,9 +45,21 @@
             },
             {
                 "command": "alk.runExhaustive",
-                "title": "Run Alk Exhaustive",
+                "title": "Run Alk (Exhaustive)",
+                "category": "Alk",
+                "icon": "$(run-all)"
+            },
+            {
+                "command": "alk.runDebug",
+                "title": "Debug Alk",
                 "category": "Alk",
                 "icon": "$(debug-alt)"
+            },
+            {
+                "command": "alk.runSymbolic",
+                "title": "Run Alk (Symbolic)",
+                "category": "Alk",
+                "icon": "$(list-tree)"
             },
             {
                 "command": "alk.stop",
@@ -151,6 +175,16 @@
                     "group": "z_commands"
                 },
                 {
+                    "when": "resourceLangId == alk && alk.canRun",
+                    "command": "alk.runSymbolic",
+                    "group": "z_commands"
+                },
+                {
+                    "when": "resourceLangId == alk && alk.canRun",
+                    "command": "alk.runDebug",
+                    "group": "z_commands"
+                },
+                {
                     "when": "resourceLangId == alk && !alk.canRun",
                     "command": "alk.stop",
                     "group": "z_commands"
@@ -177,6 +211,16 @@
                 {
                     "when": "resourceLangId == alk && alk.canRun",
                     "command": "alk.runExhaustive",
+                    "group": "z_commands"
+                },
+                {
+                    "when": "resourceLangId == alk && alk.canRun",
+                    "command": "alk.runSymbolic",
+                    "group": "z_commands"
+                },
+                {
+                    "when": "resourceLangId == alk && alk.canRun",
+                    "command": "alk.runDebug",
                     "group": "z_commands"
                 },
                 {
@@ -207,7 +251,6 @@
                 ],
                 "program": "./out/debugAdapter.js",
                 "runtime": "node",
-
                 "configurationAttributes": {
                     "launch": {
                         "required": [
@@ -222,7 +265,6 @@
                         }
                     }
                 },
-
                 "initialConfigurations": [
                     {
                         "type": "alk",
@@ -231,7 +273,6 @@
                         "mainFile": "${command:GetActiveFile}"
                     }
                 ],
-
                 "configurationSnippets": [
                     {
                         "label": "Alk Debug: Launch",
@@ -243,8 +284,7 @@
                             "mainFile": "${command:GetActiveFile}"
                         }
                     }
-                  ],
-
+                ],
                 "variables": {
                     "GetActiveFile": "alk.getActiveFile"
                 }
@@ -253,10 +293,11 @@
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",
-        "compile": "tsc -p ./",
-        "watch": "tsc -watch -p ./",
+        "compile": "tsc -b",
+        "watch": "tsc -b -w",
         "pretest": "npm run compile && npm run lint",
-        "lint": "eslint src --ext ts",
+        "lint": "eslint ./client/src ./server/src --ext .ts,.tsx",
+        "postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
         "test": "node ./out/test/runTest.js"
     },
     "devDependencies": {
@@ -267,20 +308,10 @@
         "@typescript-eslint/eslint-plugin": "^4.31.1",
         "@typescript-eslint/parser": "^4.31.1",
         "@vscode/test-electron": "^1.6.2",
-        "@vscode/debugadapter": "^1.55.1",
-        "eslint": "^7.32.0",
         "await-notify": "^1.0.1",
+        "eslint": "^7.32.0",
         "glob": "^7.1.7",
         "mocha": "^9.1.1",
         "typescript": "^4.4.3"
-    },
-    "dependencies": {
-        "axios": "^0.24.0",
-        "del": "^6.0.0",
-        "download": "^8.0.0",
-        "mv": "^2.1.1",
-        "tree-kill": "^1.2.2",
-        "unzipper": "^0.10.11",
-        "vsce": "^2.6.3"
     }
 }

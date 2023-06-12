@@ -18,7 +18,7 @@ function getInputString()
     return input;
 }
 
-export function getOptionsString(exhaustive: boolean)
+export function getOptionsString(exhaustive: boolean, symbolic: boolean)
 {
     let options = '';
     if (vscode.workspace.getConfiguration('alk').get('metadata'))
@@ -29,9 +29,17 @@ export function getOptionsString(exhaustive: boolean)
     {
         options += `-p ${vscode.workspace.getConfiguration('alk').get('precision')} `;
     }
+    // if (vscode.workspace.getConfiguration('alk').get('symbolicExecution'))
+    // {
+    //     options += '-s -smt="Z3" ';
+    // }
     if (exhaustive)
     {
         options += '-e ';
+    }
+    if (symbolic) 
+    {
+        options += '-s -smt="Z3" ';
     }
     if (vscode.workspace.getConfiguration('alk').get('initialState '))
     {

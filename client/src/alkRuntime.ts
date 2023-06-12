@@ -35,6 +35,7 @@ export class AlkRuntime extends EventEmitter
     private _inChoose = false;
     private _chooseLines: string[] = [];
     private _chooseTitle = '';
+    private _waitingForOutput = false;
 
     public constructor()
     {
@@ -44,22 +45,23 @@ export class AlkRuntime extends EventEmitter
     public async start(alkPath: string, mainFile: string): Promise<void>
     {
         this._mainFile = mainFile;
-        const options = getOptionsString(false);
+        const options = getOptionsString(false, false);
         let command = '', args = [];
         
         if (os.type() === 'Windows_NT')
         {
-            command = alkPath;
-            args = ['-a', `"${mainFile}"`, '-d', '-dm', /*options*/];
+            command = `"${alkPath}"`;
+            args = ['-a', `"${mainFile}"`, '-d', '-dm', options];
         }
         else
         {
             command = '/bin/bash';
-            args = [`"${alkPath}"`, '-a', `"${mainFile}"`, '-d', options];
+            args = [alkPath, '-a', `${mainFile}`, '-d', '-dm', options];
         }
         const cp = require('child_process');
         this._childProcess = cp.spawn(command, args, {
-            stdio: 'pipe'
+            stdio: 'pipe',
+            shell: true
         });
         this._childProcess.stdout.on('data', async (data: any) => {
             for (let c of data.toString())
@@ -67,7 +69,7 @@ export class AlkRuntime extends EventEmitter
                 this._alkOutput += c;
                 if (c === '\n')
                 {
-                    if (this._linesSkipped < 4)
+                    if (os.type() === 'Windows_NT' && this._linesSkipped < 4)
                     {
                         this._linesSkipped++;
                         this._alkOutput = '';
@@ -154,7 +156,6 @@ export class AlkRuntime extends EventEmitter
             await this.writeCommand(`break ${bp.line}\n`);
         }
         this.sendEvent('stopOnEntry');
-        // this.continue();
     }
 
     public terminate(): void
@@ -240,22 +241,37 @@ export class AlkRuntime extends EventEmitter
     public async next(): Promise<void>
     {
         const output = await this.writeCommand('next\n');
+        this._waitingForOutput = true;
         this.printProgramOutput(output);
+        this._waitingForOutput = false;
         this.sendEvent('stopOnStep');
     }
 
     public async step(): Promise<void>
     {
         const output = await this.writeCommand('step\n');
+        this._waitingForOutput = true;
         this.printProgramOutput(output);
+        this._waitingForOutput = false;
         this.sendEvent('stopOnStep');
     }
 
     public async continue(): Promise<void>
     {
         const output = await this.writeCommand('continue\n');
+        this._waitingForOutput = true;
         this.printProgramOutput(output);
+        this._waitingForOutput = false;
         this.sendEvent('stopOnBreakpoint');
+    }
+
+    public async stepOut(): Promise<void>
+    {
+        const output = await this.writeCommand('finish\n');
+        this._waitingForOutput = true;
+        this.printProgramOutput(output);
+        this._waitingForOutput = false;
+        this.sendEvent('stopOnStep');
     }
 
     public async back(): Promise<void>
@@ -289,6 +305,17 @@ export class AlkRuntime extends EventEmitter
             clearHighlights();
         }
         this.sendEvent('stopOnStep');
+    }
+
+    public printAll(): void
+    {
+        while (this._waitingForOutput)
+        {}
+        const toPrint = this._alkOutputLines.filter(l => l.includes('|->'));
+        for (let line of toPrint)
+        {
+            this.sendEvent('output', 'stdout', line);
+        }
     }
 
     private async writeCommand(command: string): Promise<string[]>
