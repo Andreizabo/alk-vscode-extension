@@ -290,7 +290,22 @@ export function activate(context: vscode.ExtensionContext) {
 async function vers(context: vscode.ExtensionContext) {
     const alkPath = path.join(context.extensionUri.fsPath, 'media', 'alk');
     const fs = require('fs');
-    await fs.readFile(path.join(alkPath, 'version.txt'), 'utf8', async function (err: any, data: any) {
+    const fse = require('fs-extra');
+
+    // Check if Alk folder exists
+    if (!fs.existsSync(alkPath)) {
+        await fse.ensureDir(alkPath);
+        console.log("Created Alk folder.");
+    }
+
+    const verPath = path.join(alkPath, 'version.txt');
+    // Check if version.txt exists
+    if (!fs.existsSync(verPath)) {
+        fs.writeFileSync(verPath, "OLD");
+        console.log("Created Alk version file.");
+    }
+
+    await fs.readFile(verPath, 'utf8', async function (err: any, data: any) {
         if (err) {
             return console.log(err);
         }
@@ -302,7 +317,7 @@ async function vers(context: vscode.ExtensionContext) {
             else {
                 vscode.window.showInformationMessage(`Updating Alk from ${data} to latest version (${response['data']['tag_name']})`);
             }
-            console.log('Updating alk');
+            console.log('Updating Alk.');
             await downloadAlk(response['data']['tag_name'], alkPath);
         }
         else {
@@ -312,109 +327,68 @@ async function vers(context: vscode.ExtensionContext) {
 }
 
 async function downloadAlk(version: string, alkPath: any) {
-    const fs = require('fs');
+    const fs = require('fs').promises;
+    const fsf = require('fs');
     const download = require('download');
-    const unzipper = require('unzipper');
-    const mv = require('mv');
+    const extract = require('extract-zip');
+    const fse = require('fs-extra');
     const del = require('del');
+    const path = require('path');
+    const os = require('os');
     const tmpPath = os.type() === 'Windows_NT' ? '.' : '/tmp';
     const tmpArchive = path.join(tmpPath, 'alk.zip');
     const tmpFolder = path.join(tmpPath, 'alk-temp-folder');
+    const absTmpFolder = path.resolve(tmpFolder);
     const tagName = version;
     version = version.replace('v', '');
-    // Download new alk
-    await fs.writeFileSync(tmpArchive, await download(`https://github.com/alk-language/java-semantics/releases/download/${tagName}/alki-v${version}.zip`));
-    // Unzip new alk
-    await fs.createReadStream(tmpArchive).pipe(unzipper.Extract({ path: tmpFolder })).on('close', async function () {
+
+    // Delete old tmp folder if exists
+    await del(absTmpFolder, { force: true });
+
+    try {
+        // Download new alk
+        fsf.writeFileSync(tmpArchive, await download(`https://github.com/alk-language/java-semantics/releases/download/${tagName}/alki-v${version}.zip`));
+
+        // Unzip new alk using extract-zip
+        await extract(tmpArchive, { dir: absTmpFolder });  // Ensure the path is absolute
+
         // Delete old alk folder
-        try {
-            await client.stop();
-            await del(alkPath, { force: true });
-            console.log(`Old alk folder deleted!`);
-            await fs.mkdir(alkPath, async function (err: any) {
-                if (err) {
-                    console.log(`Error recreating alk folder. ${err}`);
-                } else {
-                    console.log("Successfully created alk folder!");
-                    // Create new version file
-                    await fs.writeFile(path.join(alkPath, 'version.txt'), tagName, function (err: any) {
-                        if (err) {
-                            console.log(`Error creating new version file. ${err}`);
-                        }
-                        console.log('Created new version file!');
-                    });
-                    // Move files
-                    await mv(path.join(tmpFolder, `v${version}`, 'bin', 'alk.jar'), path.join(alkPath, 'alk.jar'), async function (err: any) {
-                        if (err) {
-                            console.log(`Error moving files. ${err}`);
-                        } else {
-                            console.log("Successfully moved the jar!");
-                        }
-                        await mv(path.join(tmpFolder, `v${version}`, 'bin', 'alki.sh'), path.join(alkPath, 'alki.sh'), async function (err: any) {
-                            if (err) {
-                                console.log(`Error moving files. ${err}`);
-                            } else {
-                                console.log("Successfully moved the sh!");
-                            }
-                            await mv(path.join(tmpFolder, `v${version}`, 'bin', 'alki.bat'), path.join(alkPath, 'alki.bat'), async function (err: any) {
-                                if (err) {
-                                    console.log(`Error moving files. ${err}`);
-                                } else {
-                                    console.log("Successfully moved the bat!");
-                                }
-                                await mv(path.join(tmpFolder, `v${version}`, 'bin', 'alkls.sh'), path.join(alkPath, 'alkls.sh'), async function (err: any) {
-                                    if (err) {
-                                        console.log(`Error moving files. ${err}`);
-                                    } else {
-                                        console.log("Successfully moved the language server sh!");
-                                    }
-                                    await mv(path.join(tmpFolder, `v${version}`, 'bin', 'alkls.bat'), path.join(alkPath, 'alkls.bat'), async function (err: any) {
-                                        if (err) {
-                                            console.log(`Error moving files. ${err}`);
-                                        } else {
-                                            console.log("Successfully moved the language server bat!");
-                                        }
-                                        await mv(path.join(tmpFolder, `v${version}`, 'bin', 'lib'), path.join(alkPath, 'lib'), async function (err: any) {
-                                            if (err) {
-                                                console.log(`Error moving files. ${err}`);
-                                            } else {
-                                                console.log("Successfully moved lib!");
-                                            }
-                                            //Delete downloaded folder
-                                            try {
-                                                await del(tmpFolder);
-                                                console.log(`Folder deleted!`);
-                                            } catch (err) {
-                                                console.error(`Error while deleting folder. ${err}`);
-                                            }
-                                            // Delete downloaded archive
-                                            await fs.unlink(tmpArchive, (err: any) => {
-                                                if (err) {
-                                                    console.error(`Error while deleting archive. ${err}`);
-                                                    return;
-                                                }
-                                                console.log('Archive deleted.');
-                                            });
-                                            console.log('Updated alk');
-                                            vscode.window.showInformationMessage(`Updated Alk to latest version (${version})`);
-                                        });
-                                    }
-                                    );
-                                }
-                                );
-                            }
-                            );
-                        }
-                        );
-                    }
-                    );
-                }
-            });
-            await client.start();
-        } catch (err) {
-            console.error(`Error while deleting old alk folder. ${err}`);
-        }
-    });
+        await client.stop();
+        await del(alkPath, { force: true });
+        console.log(`Old Alk folder deleted.`);
+
+        // Recreate alk folder
+        await fse.ensureDir(alkPath);  // Use ensureDir to create the directory if it doesn't exist
+        console.log("Successfully created Alk folder.");
+
+        // Create new version file
+        fsf.writeFileSync(path.join(alkPath, 'version.txt'), tagName);
+        console.log('Created new version file.');
+
+        // Move files
+        await fse.move(path.join(tmpFolder, `v${version}`, 'bin', 'alk.jar'), path.join(alkPath, 'alk.jar'));
+        await fse.move(path.join(tmpFolder, `v${version}`, 'bin', 'alki.sh'), path.join(alkPath, 'alki.sh'));
+        await fse.move(path.join(tmpFolder, `v${version}`, 'bin', 'alki.bat'), path.join(alkPath, 'alki.bat'));
+        await fse.move(path.join(tmpFolder, `v${version}`, 'bin', 'alkls.sh'), path.join(alkPath, 'alkls.sh'));
+        await fse.move(path.join(tmpFolder, `v${version}`, 'bin', 'alkls.bat'), path.join(alkPath, 'alkls.bat'));
+        await fse.move(path.join(tmpFolder, `v${version}`, 'bin', 'lib'), path.join(alkPath, 'lib'));
+        console.log("Successfully moved files.");
+
+        // Delete downloaded folder
+        await del(tmpFolder);
+        console.log(`Folder deleted.`);
+
+        // Delete downloaded archive
+        await fs.unlink(tmpArchive);
+        console.log('Archive deleted.');
+
+        console.log('Updated Alk.');
+        vscode.window.showInformationMessage(`Updated Alk to the latest version (${version})`);
+
+        await client.start();
+    } catch (err) {
+        console.error(`Error updating Alk. ${err}.`);
+    }
 }
 
 export function deactivate(): Thenable<void> | undefined {
@@ -423,294 +397,3 @@ export function deactivate(): Thenable<void> | undefined {
     }
     return client.stop();
 }
-
-// vscode.languages.registerDocumentFormattingEditProvider('alk', {
-//     provideDocumentFormattingEdits(document: vscode.TextDocument): vscode.TextEdit[] {
-//         function removeAllSpaces(line: string) {
-//             return line.trim().replace(/\s\s+/g, ' ');
-//         }
-//         function makeTabs(tabs: number) {
-//             let tab = '';
-//             for (let i = 0; i < tabs; ++i) {
-//                 tab += '\t';
-//             }
-//             return tab;
-//         }
-//         function getPosition(string: string, subString: string, index: number) {
-//             if (!string.includes(subString)) {
-//                 return -1;
-//             }
-//             return string.split(subString, index).join(subString).length;
-//         }
-//         function countChar(string: string, chr: string) {
-//             return string.split(chr).length - 1;
-//         }
-//         function insertAt(string: string, inst: string, index: number) {
-//             return string.substring(0, index) + inst + string.substring(index);
-//         }
-//         function replaceAt(string: string, replace: string, index: number) {
-//             return string.substring(0, index) + replace + string.substring(index + replace.length);
-//         }
-//         function deleteAt(string: string, index: number) {
-//             return string.substring(0, index) + string.substring(index + 1);
-//         }
-//         function conditional(string: string) {
-//             let stripped = removeAllSpaces(string);
-//             return stripped.startsWith("if") ||
-//                 stripped.startsWith("while") ||
-//                 stripped.startsWith("else") ||
-//                 stripped.startsWith("for") ||
-//                 stripped.startsWith("repeat") ||
-//                 stripped.startsWith("foreach") ||
-//                 stripped.startsWith("forall") ||
-//                 stripped.startsWith("do");
-//         }
-//         function conditionalWithPhar(string: string) {
-//             let stripped = removeAllSpaces(string);
-//             return stripped.startsWith("if") ||
-//                 stripped.startsWith("while") ||
-//                 (stripped.startsWith("for") && !stripped.startsWith("foreach")) ||
-//                 stripped.startsWith("forall");
-//         }
-//         function isFunction(line: string, index: number) {
-//             for (let i = index; i < line.length; ++i) {
-//                 if (line[i] == ' ' || line[i] == '\t') {
-//                     return false;
-//                 }
-//                 if (line[i] == '(') {
-//                     return true;
-//                 }
-//             }
-//             return false;
-//         }
-//         function handleBlock(line: string, tabs: number, handledConditional: number, preservedConditional: number, expPhar: number, expFuncPhar: number) {
-//             let len = line.length;
-//             line = removeAllSpaces(line).replace('/\n/g', '').replace('/\t/g', '').replace('/\s/g', '');
-//             let i = 0;
-//             if (line[i] === '{') {
-//                 i = 1;
-//             }
-//             let lastWasntInstr = true;
-//             while (i < len) {
-//                 if (line[i] === '"') {
-//                     i += line.substring(i + 1).indexOf('"');
-//                     ++i;
-//                 }
-//                 if (expPhar === 0 && expFuncPhar === 0) {
-//                     if (line[i] === '{') {
-//                         lastWasntInstr = true;
-//                         if (handledConditional > 0) {
-//                             preservedConditional = handledConditional - 1;
-//                             handledConditional = 0;
-//                             --tabs;
-//                         }
-//                         line = insertAt(line, '\n' + makeTabs(tabs), i);
-//                         ++tabs;
-//                         i += tabs;
-//                         len += tabs;
-//                     }
-//                     else if (line[i] === '}') {
-//                         lastWasntInstr = true;
-//                         --tabs;
-//                         line = insertAt(line, '\n' + makeTabs(tabs), i);
-//                         i += tabs + 1;
-//                         len += tabs + 1;
-//                         handledConditional = preservedConditional;
-//                     }
-//                     else if (line[i] === ' ' || line[i] === '\t') {
-//                         lastWasntInstr = true;
-//                         line = replaceAt(line, '', i);
-//                     }
-//                     else if (lastWasntInstr) {
-//                         lastWasntInstr = false;
-//                         line = insertAt(line, '\n' + makeTabs(tabs), i);
-//                         i += tabs + 1;
-//                         len += tabs + 1;
-
-//                         if (line.substring(i).startsWith('foreach')) {
-//                             if (line.substring(i).indexOf(';') > -1 && (line.substring(i).indexOf('{') === -1 || line.substring(i).indexOf(';') < line.substring(i).indexOf('{'))) {
-//                                 i += line.substring(i).indexOf(';');
-//                             }
-//                             else {
-//                                 i += line.substring(i).indexOf('{');
-//                                 --i;
-//                             }
-//                         }
-//                         else if (conditional(line.substring(i))) {
-//                             ++tabs;
-//                             if (conditionalWithPhar(line.substring(i))) {
-//                                 i += line.substring(i).indexOf('(');
-//                                 ++expPhar;
-//                             }
-//                             else {
-//                                 ++handledConditional;
-//                             }
-//                         }
-//                         else {
-//                             if (handledConditional > 0) {
-//                                 --tabs;
-//                                 --handledConditional;
-//                             }
-//                             if (isFunction(line, i)) {
-//                                 i += line.substring(i).indexOf('(');
-//                                 ++expFuncPhar;
-//                             }
-//                             else {
-//                                 i += line.substring(i).indexOf(';');
-//                             }
-//                         }
-//                     }
-//                 }
-//                 else if (expPhar === 0 && expFuncPhar > 0) {
-//                     if (line[i] === '(') {
-//                         ++expFuncPhar;
-//                         // line = insertAt(line, '\n' + makeTabs(tabs), i);
-//                         // ++tabs;
-//                         // i += tabs;
-//                         // len += tabs;
-//                     }
-//                     else if (line[i] === ')') {
-//                         --expFuncPhar;
-//                         // if (i === 0) {
-//                         //     line = insertAt(line, makeTabs(tabs), i);
-//                         //     i += tabs;
-//                         //     len += tabs;
-//                         // }
-//                         if (expFuncPhar == 0 && line.substring(i).indexOf('{') !== -1 && line.substring(i).indexOf(';') > line.substring(i).indexOf('{')) {
-//                             while (line[++i] != '{');
-//                             --i;
-//                         }
-//                         else if (line[i + 1] == ';') {
-//                             lastWasntInstr = true;
-//                             ++i;
-//                         }
-//                     }
-//                 }
-//                 else if (expPhar > 0 && expFuncPhar === 0) {
-//                     if (line[i] === '(') {
-//                         ++expPhar;
-//                     }
-//                     else if (line[i] === ')') {
-//                         --expPhar;
-//                         if (expPhar === 0) {
-//                             ++handledConditional;
-//                         }
-//                     }
-//                 }
-//                 ++i;
-//             }
-//             return {
-//                 "line": line,
-//                 "tabs": tabs,
-//                 "handledConditional": handledConditional,
-//                 "preservedConditional": preservedConditional,
-//                 "expPhar": expPhar,
-//                 "expFuncPhar": expFuncPhar
-//             };
-//         }
-//         function inString(line: string, index: number) {
-//             let noLeft = 0;
-//             let noRight = 0;
-
-//             for (let i = 0; i < line.length; ++i) {
-//                 if (line[i] === '"') {
-//                     if (i < index) {
-//                         ++noLeft;
-//                     }
-//                     else {
-//                         ++noRight;
-//                     }
-//                 }
-//             }
-
-//             return noLeft % 2 == 1 && noRight % 2 == 1;
-//         }
-//         function spacing(line: string) {
-//             let doubleSpace = ['+', '-', '*', ':', '/', '=', '<', '>', "+=", "-=", '*=', "/=", "==", "<=", ">="];
-//             let singleSpace = [';', ',', '.', "++", "--"];
-//             for (var symbol of doubleSpace) {
-//                 let index = getPosition(line, symbol, 1);
-//                 let i = 1;
-//                 while (index !== -1 && index < line.length) {
-//                     if (!inString(line, index)) {
-//                         if ((index > 0 && doubleSpace.includes(line.substring(index - 1, index + symbol.length))) || doubleSpace.includes(line.substring(index, index + 1 + symbol.length)) ||
-//                             (index > 0 && singleSpace.includes(line.substring(index - 1, index + symbol.length))) || singleSpace.includes(line.substring(index, index + 1 + symbol.length))) {
-//                             index = getPosition(line, symbol, ++i);
-//                             continue;
-//                         }
-//                         if (index > 0) {
-//                             if (line[index - 1] !== ' ') {
-//                                 line = insertAt(line, ' ', index);
-//                                 ++index;
-//                             }
-//                         }
-//                         if (line[index + symbol.length] !== ' ') {
-//                             line = insertAt(line, ' ', index + symbol.length);
-//                         }
-//                     }
-//                     index = getPosition(line, symbol, ++i);
-//                 }
-//             }
-//             for (var symbol of singleSpace) {
-//                 let index = getPosition(line, symbol, 1);
-//                 let i = 1;
-//                 while (index !== -1 && index < line.length) {
-//                     if ((index > 0 && doubleSpace.includes(line.substring(index - 1, index + 1))) || doubleSpace.includes(line.substring(index, index + 2)) ||
-//                         (index > 0 && singleSpace.includes(line.substring(index - 1, index + 1))) || singleSpace.includes(line.substring(index, index + 2))) {
-//                         index = getPosition(line, symbol, ++i);
-//                         continue;
-//                     }
-//                     if (index > 0) {
-//                         if (line[index - 1] === ' ') {
-//                             line = deleteAt(line, index - 1);
-//                         }
-//                     }
-//                     if (line[index + symbol.length] !== ' ' && line[index + symbol.length] !== '\n' && line[index + symbol.length] !== '\t') {
-//                         line = insertAt(line, ' ', index + symbol.length);
-//                     }
-//                     index = getPosition(line, symbol, ++i);
-//                 }
-//             }
-//             return line;
-//         }
-
-//         const linesNo = document.lineCount;
-//         let operations: vscode.TextEdit[] = [];
-//         let tabs = 0;
-//         let handledConditional = 0;
-//         let preservedConditional = 0;
-//         let expPhar = 0;
-//         let expFuncPhar = 0;
-//         let lineArr: string[] = [];
-//         for (let i = 0; i < linesNo; ++i) {
-//             lineArr.push(document.lineAt(i).text);
-//             //     let thisLine = document.lineAt(i).text;
-
-//             //     let result = handleBlock(thisLine, tabs, handledConditional, preservedConditional, expPhar, expFuncPhar);
-//             //     thisLine = result["line"];
-//             //     handledConditional = result["handledConditional"];
-//             //     preservedConditional = result["preservedConditional"];
-//             //     expPhar = result["expPhar"];
-//             //     expFuncPhar = result["expFuncPhar"];
-
-//             //     operations.push(vscode.TextEdit.replace(document.lineAt(i).range, thisLine.replace('\n', '')));
-
-//             //     tabs = result["tabs"];
-//             //    operations.push(vscode.TextEdit.delete(document.lineAt(i).range));
-//         }
-//         operations.push({
-//             newText: '',
-//             range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(linesNo + 1, 0))
-//         });
-//         //writeFileSync(document.uri.fsPath, '', {flag: 'w'});
-
-//         let superLine = lineArr.join(" ");
-//         superLine = handleBlock(superLine, 0, 0, 0, 0, 0)["line"];
-//         superLine = spacing(superLine);
-//         if (superLine[0] == '\n') {
-//             superLine = superLine.substring(1);
-//         }
-//         operations.push(vscode.TextEdit.insert(document.lineAt(0).range.start, superLine));
-//         return operations;
-//     }
-// });
